@@ -34,8 +34,6 @@ LOCAL_STARTER_ACCOUNTS = {
     "DOCTOR": ("Bác sĩ", "doctor@dermascan.local", LOCAL_STARTER_PASSWORD),
     "USER": ("Người dùng A", "patient@dermascan.local", LOCAL_STARTER_PASSWORD),
 }
-LOCAL_STARTER_EMAILS = {account[1] for account in LOCAL_STARTER_ACCOUNTS.values()}
-
 LEGACY_DEMO_EMAILS = frozenset({
     "admin@dermascan.local", "doctor@dermascan.local",
     "patient@dermascan.local", "patient2@dermascan.local",
@@ -54,9 +52,10 @@ def _already_initialized():
         )
 
     existing_emails = {user.email for user in users}
-    if any(email in LEGACY_DEMO_EMAILS for email in existing_emails) and (
-        len(users) != 3 or existing_emails != LOCAL_STARTER_EMAILS
-    ):
+    # Legacy seed contained exactly four known demo emails, while a legitimate
+    # database can accumulate any number of registered doctors/patients.
+    # Never infer "demo database" from a user count greater than three.
+    if existing_emails == LEGACY_DEMO_EMAILS:
         raise click.ClickException(
             "Database đang chứa dữ liệu demo; hãy chọn SQLite mới qua DATABASE_URL."
         )

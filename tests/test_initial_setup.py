@@ -175,3 +175,32 @@ def test_local_starter_account_setup_is_repeatable_and_preserves_changes(app):
         assert doctor.check_password("NewDoctorPassword123!")
         assert db.session.scalar(db.select(db.func.count(User.id))) == 3
 
+
+def test_startup_after_registering_additional_doctor_keeps_existing_data(app):
+    runner = app.test_cli_runner()
+    first = runner.invoke(args=["setup-initial", "--local-starter-accounts"])
+    assert first.exit_code == 0, first.output
+
+    registration = app.test_client().post("/api/auth/register", json={
+        "full_name": "Registered Doctor", "email": "new.doctor@example.test",
+        "password": "DoctorPassword123!", "role": "DOCTOR",
+    })
+    assert registration.status_code == 201, registration.get_json()
+
+    with app.app_context():
+        doctor = db.session.scalar(db.select(User).where(User.email == "new.doctor@example.test"))
+        assert doctor is not None
+        doctor.is_active = True  # Emulate approval, preserving the original record.
+        db.session.commit()
+        original_id = doctor.id
+
+    again = runner.invoke(args=["setup-initial", "--local-starter-accounts"], input="")
+    assert again.exit_code == 0, again.output
+    with app.app_context():
+        users = db.session.scalars(db.select(User)).all()
+        assert len(users) == 4
+        doctor = db.session.get(User, original_id)
+        assert doctor.email == "new.doctor@example.test"
+        assert doctor.is_active is True
+        assert db.session.scalar(db.select(db.func.count(Slide.id))) == 2
+
