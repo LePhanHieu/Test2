@@ -96,6 +96,9 @@ def init_database(app, config=None):
     from .seed import register_seed
     register_seed(app)
 
+    from .initial_setup import register_initial_setup
+    register_initial_setup(app)
+
 
 def create_app(config=None):
     app = Flask(

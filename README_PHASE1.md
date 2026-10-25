@@ -14,12 +14,11 @@ copy .env.example .env
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-Dán chuỗi vừa sinh vào `SECRET_KEY` trong `.env`. Các giá trị khác cho demo cục bộ:
+Dán chuỗi vừa sinh vào `SECRET_KEY` trong `.env`. Cấu hình cho database mới:
 
 ```dotenv
 SECRET_KEY=<chuỗi ngẫu nhiên vừa sinh>
-ALLOW_DEMO_SEED=true
-DEMO_PASSWORD=<mật khẩu demo tự chọn dài 12–256 ký tự>
+ALLOW_DEMO_SEED=false
 SESSION_COOKIE_SECURE=false
 ```
 
@@ -31,11 +30,17 @@ Linux/macOS: thay lệnh activate bằng `source .venv/bin/activate` và copy b�
 python -m flask --app skin_cancer.webapp.database_app db upgrade
 python -m flask --app skin_cancer.webapp.database_app db current
 python -m flask --app skin_cancer.webapp.database_app db check
-python -m flask --app skin_cancer.webapp.database_app seed-demo
+python -m flask --app skin_cancer.webapp.database_app setup-initial
 python -m pytest -q
 ```
 
-Database mặc định: `instance/dermascan.db`, tính theo thư mục source, không phụ thuộc nơi gọi chương trình. Có thể đặt `DATABASE_URL` thành URL SQLite tuyệt đối trong `.env`, ví dụ `sqlite:////absolute/path/to/instance/dermascan.db`. Thư mục cha của đường dẫn tùy chọn phải tồn tại.
+Database mặc định mới: `instance/dermascan_live.db`, tách biệt với database demo cũ `instance/dermascan.db` (không bị xóa hoặc chỉnh sửa). Có thể đặt `DATABASE_URL` thành URL SQLite tuyệt đối trong `.env`, ví dụ `sqlite:////absolute/path/to/instance/dermascan_live.db`. Thư mục cha của đường dẫn tùy chọn phải tồn tại. Nếu `.env` đang trỏ tới database cũ thì cần đổi lại trước khi chạy.
+
+Lệnh `setup-initial` sẽ yêu cầu nhập họ tên, email và mật khẩu riêng cho một ADMIN, một DOCTOR và một USER. Mật khẩu không hiển thị khi gõ, được lưu dưới dạng hash. Lệnh chỉ khởi tạo trên database trống; lần chạy lại không tạo thêm tài khoản hoặc banner. Hai banner mặc định dùng ảnh có sẵn trong `skin_cancer/webapp/assets/`, logo được giữ nguyên.
+
+`python -m pytest -q` chạy bộ test an toàn trong `tests/`, luôn dùng SQLite tạm. Script `test_all_features_e2e.py` cũ cần cả stack AI/Redis và có ghi dữ liệu, vì vậy chỉ chạy thủ công khi đã chỉ định database kiểm thử riêng.
+
+**Giới hạn hiện tại:** mã xác minh email/OTP vẫn hiển thị trong Terminal; chưa triển khai gửi email tự động. Chưa phù hợp để xử lý thông tin nhận dạng bệnh nhân thật trên môi trường công khai, và các tệp dữ liệu cũ vẫn được theo dõi trong lịch sử Git. Đây là hai công việc sẽ xử lý sau theo yêu cầu.
 
 Sau này có thay đổi models:
 
@@ -44,11 +49,8 @@ python -m flask --app skin_cancer.webapp.database_app db migrate -m "Mo ta thay 
 python -m flask --app skin_cancer.webapp.database_app db upgrade
 ```
 
-## 4. Tài khoản demo
+## 4. Tài khoản khởi tạo
 
-| Email                    | Role   |
-| ------------------------ | ------ |
-| admin@dermascan.local    | ADMIN  |
-| doctor@dermascan.local   | DOCTOR |
-| patient@dermascan.local  | USER A |
-| patient2@dermascan.local | USER B |
+Không có email/mật khẩu mặc định. Chủ dự án tự nhập thông tin cho ADMIN,
+DOCTOR và USER khi `setup-initial` chạy lần đầu. Tài khoản thường đăng ký từ
+web vẫn áp dụng quy trình xác thực hiện tại qua Terminal cho tới khi nâng cấp.

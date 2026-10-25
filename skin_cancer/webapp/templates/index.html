@@ -5331,7 +5331,7 @@
           <div class="hp-field">
             <label for="loginEmail">Email <span class="hp-req">*</span></label>
 
-            <input id="loginEmail" type="email" value="doctor@dermascan.local" placeholder="you@example.com"
+            <input id="loginEmail" type="email" placeholder="you@example.com"
               autocomplete="email" data-i18n-ph="login.emailPh" />
 
             <p class="hp-field-error hidden" id="hpLoginEmailErr"></p>
@@ -5359,9 +5359,6 @@
             </div>
 
             <p class="hp-field-error hidden" id="hpLoginPasswordErr"></p>
-            <p class="hp-field-hint" data-i18n="login.demo">
-              Tài khoản bác sĩ mẫu: doctor@dermascan.local
-            </p>
           </div>
 
           <button type="button" id="loginBtn" class="hp-btn-submit hp-btn-green" data-i18n="login.submit">
@@ -5723,90 +5720,13 @@
       var hpAnalyze = el("analyze");
       var hpWasAuthed = null;
 
-      var HP_USERS_KEY = "dermascan_users";
-      var HP_SESSION_KEY = "dermascan_current_user";
-      var HP_DEMO_DOCTOR = {
-        id: "demo-doctor",
-        full_name: "DEMO Doctor",
-        email: "doctor@dermascan.local",
-        password: "123456123456",
-        role: "DOCTOR",
-      };
-
-      function hpReadUsers() {
-        var users = [];
+      // Loại bỏ dữ liệu tài khoản giả lập cũ; trạng thái đăng nhập do server quyết định.
+      function hpClearLegacyAuthStorage() {
         try {
-          users = JSON.parse(localStorage.getItem(HP_USERS_KEY) || "[]");
-        } catch (err) {
-          users = [];
-        }
-        if (!Array.isArray(users)) users = [];
-        var hasDemo = users.some(function (user) {
-          return (
-            user &&
-            String(user.email || "").trim().toLowerCase() ===
-            HP_DEMO_DOCTOR.email
-          );
-        });
-        if (!hasDemo) {
-          users.unshift(HP_DEMO_DOCTOR);
-          hpWriteUsers(users);
-        }
-        return users;
-      }
-
-      function hpWriteUsers(users) {
-        try {
-          localStorage.setItem(HP_USERS_KEY, JSON.stringify(users));
-        } catch (err) {
-          console.error(err);
-        }
-      }
-
-      function hpSaveSession(user) {
-        if (!user) {
-          try {
-            localStorage.removeItem(HP_SESSION_KEY);
-            // Xóa cả khóa tương thích nếu phiên cũ từng dùng tên này.
-            localStorage.removeItem("currentUser");
-          } catch (err) { }
-          return;
-        }
-        var safe = {
-          id: user.id,
-          full_name: user.full_name,
-          email: user.email,
-          role: user.role,
-        };
-        try {
-          localStorage.setItem(HP_SESSION_KEY, JSON.stringify(safe));
-        } catch (err) {
-          console.error(err);
-        }
-        return safe;
-      }
-
-      function hpReadSession() {
-        try {
-          var raw = localStorage.getItem(HP_SESSION_KEY);
-          if (!raw) return null;
-          var user = JSON.parse(raw);
-          return user && user.email ? user : null;
-        } catch (err) {
-          return null;
-        }
-      }
-
-      function hpFindLocalUser(email, password) {
-        var needle = String(email || "").trim().toLowerCase();
-        return hpReadUsers().find(function (user) {
-          if (!user) return false;
-          var matchEmail =
-            String(user.email || "").trim().toLowerCase() === needle;
-          if (!matchEmail) return false;
-          if (password == null) return true;
-          return String(user.password) === String(password);
-        });
+          ["dermascan_users", "dermascan_current_user", "currentUser"].forEach(function (key) {
+            localStorage.removeItem(key);
+          });
+        } catch (err) { /* localStorage có thể bị tắt */ }
       }
 
       function hpApplyLoggedInUser(user, fromModal) {
@@ -5816,7 +5736,6 @@
           email: user.email,
           role: String(user.role || "").toUpperCase(),
         };
-        hpSaveSession(currentUser);
         if (["ADMIN", "DOCTOR", "USER"].includes(currentUser.role)) {
           window.location.replace(hpRoleRoute(currentUser.role));
           return;
@@ -6083,12 +6002,6 @@
 
           return Promise.resolve(result).then(function (value) {
             try {
-              if (!currentUser) {
-                var localSession = hpReadSession();
-                if (localSession) currentUser = localSession;
-              } else {
-                hpSaveSession(currentUser);
-              }
               applyAuthGate(
                 hpAuthModal && !hpAuthModal.classList.contains("hidden"),
               );
@@ -6105,7 +6018,7 @@
         hpLogoutBtn.addEventListener(
           "click",
           function () {
-            hpSaveSession(null);
+            hpClearLegacyAuthStorage();
             currentUser = null;
             applyAuthGate(false);
           },
@@ -6363,7 +6276,7 @@
       if (hpNavLogout) {
         hpNavLogout.addEventListener("click", function (e) {
           e.preventDefault();
-          hpSaveSession(null);
+          hpClearLegacyAuthStorage();
           currentUser = null;
           ["dermascan_current_user", "currentUser", "dermascan_doctor_profile", "role", "user"].forEach(function(k) {
             try { localStorage.removeItem(k); } catch(err){}
@@ -6404,51 +6317,31 @@
 
         try {
           console.log("[DermaScan] Sending login request", { email: email });
-          var loggedIn = null;
-
-          if (typeof getCsrfToken === "function") {
-            try {
-              var csrfToken = await getCsrfToken();
-              var response = await fetch("/api/auth/login", {
-                method: "POST",
-                credentials: "same-origin",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRFToken": csrfToken,
-                },
-                body: JSON.stringify({ email: email, password: password }),
-              });
-              var data = await response.json().catch(function () {
-                return {};
-              });
-              console.log("[DermaScan] Login response", {
-                status: response.status,
-                ok: response.ok,
-                requires_2fa: data.requires_2fa === true,
-              });
-              if (response.ok && data.requires_2fa) {
-                setAuthView("hpTwoFactorForm");
-                if (hpAuthModal) hpAuthModal.classList.remove("hidden");
-                var deliveryNotice = el("hpTwoFactorDeliveryNotice");
-                if (deliveryNotice) deliveryNotice.textContent = data.message || "Mã OTP đã được tạo. Hãy kiểm tra cửa sổ Terminal.";
-                hpShowFormAlert("hpTwoFactorAlert", "hpTwoFactorAlertText", "", true);
-                var otpInput = el("hpTwoFactorCode");
-                if (otpInput) otpInput.focus();
-                console.log("[DermaScan] Switched to 2FA verification form");
-                return;
-              } else if (response.ok && (data.user || data.success)) {
-                loggedIn = data.user || data;
-              } else if (response.status !== 401 && !response.ok) {
-                throw new Error(
-                  data.message || data.error || T("login.failed"),
-                );
-              }
-            } catch (apiError) {
-              if (!String(apiError.message || "").includes("Failed to fetch")) {
-                if (!hpFindLocalUser(email, password)) throw apiError;
-              }
-            }
+          var csrfToken = await getCsrfToken();
+          var response = await fetch("/api/auth/login", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrfToken,
+            },
+            body: JSON.stringify({ email: email, password: password }),
+          });
+          var data = await response.json().catch(function () { return {}; });
+          if (!response.ok) {
+            throw new Error(data.message || data.error || T("login.failed"));
           }
+          if (data.requires_2fa) {
+            setAuthView("hpTwoFactorForm");
+            if (hpAuthModal) hpAuthModal.classList.remove("hidden");
+            var deliveryNotice = el("hpTwoFactorDeliveryNotice");
+            if (deliveryNotice) deliveryNotice.textContent = data.message || "Mã OTP đã được tạo. Hãy kiểm tra cửa sổ Terminal.";
+            hpShowFormAlert("hpTwoFactorAlert", "hpTwoFactorAlertText", "", true);
+            var otpInput = el("hpTwoFactorCode");
+            if (otpInput) otpInput.focus();
+            return;
+          }
+          var loggedIn = data.user;
 
           if (!loggedIn) {
             throw new Error(T("login.failed"));
@@ -6548,7 +6441,7 @@
         }
       });
 
-      // ====== ĐĂNG KÝ -> localStorage + POST /api/auth/register ======
+      // ====== ĐĂNG KÝ: chỉ thành công khi server lưu vào database ======
 
       var hpRegisterFormNode = el("hpRegisterForm");
       if (hpRegisterFormNode) {
@@ -6568,65 +6461,25 @@
           if (btn) btn.disabled = true;
 
           try {
-            if (hpFindLocalUser(email)) {
-              throw new Error(T("register.exists"));
-            }
-
-            var serverOk = false;
-            if (typeof getCsrfToken === "function") {
-              try {
-                var csrfToken = await getCsrfToken();
-                var response = await fetch("/api/auth/register", {
-                  method: "POST",
-                  credentials: "same-origin",
-                  headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": csrfToken,
-                  },
-                  body: JSON.stringify({
-                    full_name: fullName,
-                    email: email,
-                    password: password,
-                    role: role,
-                  }),
-                });
-                var data = await response.json().catch(function () {
-                  return {};
-                });
-                if (response.status === 409) {
-                  throw new Error(
-                    data.message || data.error || T("register.exists"),
-                  );
-                }
-                if (response.ok) {
-                  serverOk = true;
-                } else if (response.status >= 400 && response.status < 500) {
-                  throw new Error(
-                    data.message || data.error || T("register.failed"),
-                  );
-                }
-              } catch (apiError) {
-                if (
-                  String(apiError.message) === T("register.exists") ||
-                  /đã được sử dụng|already registered/i.test(
-                    apiError.message || "",
-                  )
-                ) {
-                  throw apiError;
-                }
-              }
-            }
-
-            var users = hpReadUsers();
-            users.push({
-              id: "local-" + Date.now(),
-              full_name: fullName,
-              email: email.toLowerCase(),
-              password: password,
-              role: role,
-              localOnly: !serverOk,
+            var csrfToken = await getCsrfToken();
+            var response = await fetch("/api/auth/register", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken,
+              },
+              body: JSON.stringify({
+                full_name: fullName,
+                email: email,
+                password: password,
+                role: role,
+              }),
             });
-            hpWriteUsers(users);
+            var data = await response.json().catch(function () { return {}; });
+            if (!response.ok) {
+              throw new Error(data.message || data.error || T("register.failed"));
+            }
 
             el("hpRegPassword").value = "";
             el("hpRegPassword2").value = "";
@@ -6742,7 +6595,6 @@
           "login.passwordPh": "••••••••••••",
           "login.submit": "Đăng nhập",
           "login.noAccount": "Chưa có tài khoản?",
-          "login.demo": "Tài khoản bác sĩ mẫu: doctor@dermascan.local",
           "login.failed": "Đăng nhập thất bại.",
           "login.invalid": "Email hoặc mật khẩu không đúng.",
           "register.success":
@@ -6991,7 +6843,6 @@
           "login.passwordPh": "••••••••••••",
           "login.submit": "Sign in",
           "login.noAccount": "Don't have an account?",
-          "login.demo": "Sample doctor account: doctor@dermascan.local",
           "login.failed": "Sign in failed.",
           "login.invalid": "Incorrect email or password.",
           "register.success":
@@ -7499,11 +7350,7 @@
        * main.js đã gọi refreshAuthState() TRƯỚC khi script này chạy,
        * nên gọi thêm 1 lần nữa để wrapper applyAuthGate có hiệu lực.
        */
-      hpReadUsers();
-      if (!currentUser) {
-        var bootSession = hpReadSession();
-        if (bootSession) currentUser = bootSession;
-      }
+      hpClearLegacyAuthStorage();
       applyAuthGate(false);
       if (typeof refreshAuthState === "function") {
         Promise.resolve(refreshAuthState()).catch(function (err) {
