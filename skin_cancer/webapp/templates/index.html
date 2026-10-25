@@ -1695,6 +1695,37 @@
       margin-bottom: 18px;
     }
 
+    /* Six-digit verification card, inspired by the supplied OTP reference. */
+    .hp-otp-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      margin: 16px 0;
+    }
+    .hp-otp-grid input {
+      min-width: 0;
+      height: 54px;
+      padding: 0;
+      text-align: center;
+      font-size: 23px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      border: 1.5px solid #dbe5ec;
+      border-radius: 12px;
+      background: #f5f8fa;
+    }
+    .hp-otp-grid input:focus {
+      border-color: #2ba149;
+      box-shadow: 0 0 0 3px rgba(43,161,73,.14);
+    }
+    .hp-otp-help {font-size: 12px; text-align: center; color: #64748b; margin: 6px 0 15px;}
+    .hp-otp-help strong {color: #2ba149; font-variant-numeric: tabular-nums;}
+    @media (max-width: 390px) {
+      .hp-otp-grid {gap: 5px;}
+      .hp-otp-grid input {height: 46px; font-size: 19px;}
+    }
+    html[data-theme="dark"] .hp-otp-grid input {background: #0d1526; border-color: #33475f; color: #f8fafc;}
+
     .hp-field {
       margin-bottom: 13px;
     }
@@ -5375,7 +5406,26 @@
           </p>
         </form>
 
-        <form class="hp-form-view hidden" id="hpTwoFactorForm" novalidate><h3 class="hp-auth-title">Xác thực hai lớp</h3><p class="hp-auth-sub" id="hpTwoFactorDeliveryNotice">Mã OTP đã được tạo cho tài khoản của bạn. Hãy kiểm tra cửa sổ Terminal để lấy mã 6 chữ số.</p><div class="hp-form-alert hidden" id="hpTwoFactorAlert"><span id="hpTwoFactorAlertText"></span></div><div class="hp-field"><label for="hpTwoFactorCode">Mã xác thực</label><input id="hpTwoFactorCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></div><button type="submit" class="hp-btn-submit hp-btn-green">Xác nhận</button><p class="hp-auth-alt">Chưa nhận được mã? <button type="button" class="hp-to-register" id="hpResendTwoFactorBtn">Gửi lại mã</button></p></form>
+        <form class="hp-form-view hidden" id="hpTwoFactorForm" novalidate>
+          <h3 class="hp-auth-title">Xác thực đăng nhập</h3>
+          <p class="hp-auth-sub" id="hpTwoFactorDeliveryNotice" aria-live="polite">Nhập mã OTP gồm 6 chữ số để tiếp tục.</p>
+          <div class="hp-form-alert hidden" id="hpTwoFactorAlert"><span id="hpTwoFactorAlertText"></span></div>
+          <div class="hp-field">
+            <label id="hpOtpLabel" for="hpOtpDigit1">Mã OTP 6 chữ số</label>
+            <div class="hp-otp-grid" id="hpOtpGrid" role="group" aria-labelledby="hpOtpLabel">
+              <input id="hpOtpDigit1" class="hp-otp-digit" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" aria-label="Chữ số OTP 1" />
+              <input class="hp-otp-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Chữ số OTP 2" />
+              <input class="hp-otp-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Chữ số OTP 3" />
+              <input class="hp-otp-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Chữ số OTP 4" />
+              <input class="hp-otp-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Chữ số OTP 5" />
+              <input class="hp-otp-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Chữ số OTP 6" />
+            </div>
+            <input id="hpTwoFactorCode" type="hidden" />
+          </div>
+          <p class="hp-otp-help">Mã có hiệu lực trong <strong id="hpOtpCountdown">05:00</strong></p>
+          <button type="submit" class="hp-btn-submit hp-btn-green">Xác nhận</button>
+          <p class="hp-auth-alt">Chưa nhận được mã? <button type="button" class="hp-to-register" id="hpResendTwoFactorBtn">Gửi lại mã</button></p>
+        </form>
         <form class="hp-form-view hidden" id="hpForgotPasswordForm" novalidate><h3 class="hp-auth-title">Khôi phục mật khẩu</h3><div class="hp-form-alert hidden" id="hpForgotAlert"><span id="hpForgotAlertText"></span></div><div class="hp-field"><label for="hpForgotEmail">Email</label><input id="hpForgotEmail" type="email" required></div><button type="submit" class="hp-btn-submit hp-btn-green">Tạo mã đặt lại</button><p class="hp-auth-alt"><button type="button" class="hp-to-register" id="hpResetPasswordBtn">Tôi đã có mã OTP</button></p></form>
         <form class="hp-form-view hidden" id="hpResetPasswordForm" novalidate><h3 class="hp-auth-title">Đặt mật khẩu mới</h3><div class="hp-form-alert hidden" id="hpResetAlert"><span id="hpResetAlertText"></span></div><div class="hp-field"><label for="hpResetToken">Mã OTP từ Terminal</label><input id="hpResetToken" required></div><div class="hp-field"><label for="hpResetPassword">Mật khẩu mới</label><input id="hpResetPassword" type="password" minlength="12" required></div><button type="submit" class="hp-btn-submit hp-btn-green">Lưu mật khẩu</button></form>
         <form class="hp-form-view hidden" id="hpVerifyEmailForm" novalidate><h3 class="hp-auth-title">Xác thực email</h3><div class="hp-form-alert hidden" id="hpVerifyEmailAlert"><span id="hpVerifyEmailAlertText"></span></div><div class="hp-field"><label for="hpVerifyEmailToken">Mã xác thực</label><input id="hpVerifyEmailToken" required></div><button type="submit" class="hp-btn-submit hp-btn-green">Xác thực email</button></form>
@@ -6335,10 +6385,10 @@
             setAuthView("hpTwoFactorForm");
             if (hpAuthModal) hpAuthModal.classList.remove("hidden");
             var deliveryNotice = el("hpTwoFactorDeliveryNotice");
-            if (deliveryNotice) deliveryNotice.textContent = data.message || "Mã OTP đã được tạo. Hãy kiểm tra cửa sổ Terminal.";
+            if (deliveryNotice) deliveryNotice.textContent = data.message || "Nhập mã OTP 6 chữ số để tiếp tục.";
             hpShowFormAlert("hpTwoFactorAlert", "hpTwoFactorAlertText", "", true);
-            var otpInput = el("hpTwoFactorCode");
-            if (otpInput) otpInput.focus();
+            hpResetOtpSlots();
+            hpStartOtpTimer();
             return;
           }
           var loggedIn = data.user;
@@ -6375,13 +6425,68 @@
         if (!response.ok) throw new Error(data.message || "Không thể hoàn tất yêu cầu.");
         return data;
       }
+      var hpOtpSlots = Array.from(document.querySelectorAll("#hpOtpGrid .hp-otp-digit"));
+      var hpOtpTimer = null;
+      function hpOtpSync() {
+        var code = hpOtpSlots.map(function (slot) { return slot.value; }).join("");
+        el("hpTwoFactorCode").value = code;
+      }
+      function hpOtpFill(digits) {
+        var text = String(digits || "").replace(/\D/g, "").slice(0, 6);
+        hpOtpSlots.forEach(function (slot, i) { slot.value = text[i] || ""; });
+        hpOtpSync();
+        var target = hpOtpSlots[Math.min(text.length, 5)];
+        if (target) target.focus();
+      }
+      function hpResetOtpSlots() {
+        hpOtpFill("");
+        if (hpOtpSlots[0]) hpOtpSlots[0].focus();
+      }
+      function hpStartOtpTimer() {
+        if (hpOtpTimer) clearInterval(hpOtpTimer);
+        var end = Date.now() + 5 * 60 * 1000;
+        function tick() {
+          var seconds = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+          var timer = el("hpOtpCountdown");
+          if (timer) timer.textContent = String(Math.floor(seconds / 60)).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0");
+          if (!seconds && hpOtpTimer) { clearInterval(hpOtpTimer); hpOtpTimer = null; }
+        }
+        tick();
+        hpOtpTimer = setInterval(tick, 1000);
+      }
+      hpOtpSlots.forEach(function (slot, index) {
+        slot.addEventListener("input", function () {
+          var digits = slot.value.replace(/\D/g, "");
+          slot.value = digits.slice(-1);
+          hpOtpSync();
+          if (slot.value && hpOtpSlots[index + 1]) hpOtpSlots[index + 1].focus();
+        });
+        slot.addEventListener("keydown", function (event) {
+          if (event.key === "Backspace" && !slot.value && hpOtpSlots[index - 1]) {
+            hpOtpSlots[index - 1].focus();
+          } else if (event.key === "ArrowLeft" && hpOtpSlots[index - 1]) {
+            hpOtpSlots[index - 1].focus();
+          } else if (event.key === "ArrowRight" && hpOtpSlots[index + 1]) {
+            hpOtpSlots[index + 1].focus();
+          }
+        });
+        slot.addEventListener("paste", function (event) {
+          var clipboard = event.clipboardData;
+          if (clipboard) {
+            event.preventDefault();
+            hpOtpFill(clipboard.getData("text"));
+          }
+        });
+      });
       var hpResendTwoFactorBtn = el("hpResendTwoFactorBtn");
       if (hpResendTwoFactorBtn) hpResendTwoFactorBtn.addEventListener("click", async function(){
         hpResendTwoFactorBtn.disabled = true;
         try {
           var result = await hpAuthPost("/api/auth/resend-2fa", {});
           var deliveryNotice = el("hpTwoFactorDeliveryNotice");
-          if (deliveryNotice) deliveryNotice.textContent = result.message || "Mã OTP mới đã được tạo. Hãy kiểm tra cửa sổ Terminal.";
+          if (deliveryNotice) deliveryNotice.textContent = result.message || "Mã OTP mới đã được tạo.";
+          hpResetOtpSlots();
+          hpStartOtpTimer();
           hpShowFormAlert("hpTwoFactorAlert", "hpTwoFactorAlertText", result.message || "Mã mới đã được gửi.", true);
         } catch(error) {
           hpShowFormAlert("hpTwoFactorAlert", "hpTwoFactorAlertText", error.message, false);
