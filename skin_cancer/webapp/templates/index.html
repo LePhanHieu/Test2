@@ -7319,6 +7319,7 @@
         updateThemeButton();
         hpSetAuthStatus();
         applyPortalTextTranslations(document.body);
+        if (window.applyConfiguredHomepage) window.applyConfiguredHomepage(hpLang);
       }
 
       var portalTranslationObserver = new MutationObserver(function (mutations) {

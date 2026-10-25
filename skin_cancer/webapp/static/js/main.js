@@ -1260,6 +1260,52 @@ if (logoutBtn) {
 
 let siteSettings = null;
 
+// Áp dụng nội dung động sau mỗi lần dịch giao diện để cấu hình ADMIN được ưu tiên.
+window.applyConfiguredHomepage = function (language) {
+  const configuration = siteSettings?.homepage_config;
+  const current = configuration?.[language === 'en' ? 'en' : 'vi'] || configuration?.vi;
+  if (!current) return;
+  const write = (selector, value) => {
+    const element = document.querySelector(selector);
+    if (element && typeof value === 'string') element.textContent = value;
+  };
+  write('#hpHeroCtaText', current.hero?.primary_cta);
+  write('.hp-hero-ghost', current.hero?.secondary_cta);
+  write('.hp-features-head .section-eyebrow', current.features?.eyebrow);
+  write('.hp-features-head .section-title', current.features?.title);
+  write('.hp-features-lead', current.features?.lead);
+  (current.features?.items || []).forEach((feature,index) => {
+    const cards = document.querySelectorAll('.features-grid .feature');
+    const card = cards[index];
+    if (!card) return;
+    for (const [selector,key] of [['.hp-feature-badge','badge'],['.feature-title','title'],['.feature-desc','description']]) {
+      const target = card.querySelector(selector);
+      if (target) target.textContent = feature[key] || '';
+    }
+  });
+  write('.hp-footer-about',current.footer_extra?.about);
+  (current.footer_extra?.technology || []).forEach((entry,index) => {
+    const node = document.querySelectorAll('.hp-tech-list li')[index];
+    if (node) node.textContent = entry;
+  });
+  write('.hp-medical-note p',current.footer_extra?.medical_notice);
+  write('.hp-footer-tagline',current.footer_extra?.tagline);
+  const links = {...(configuration.social_links || {}),facebook:siteSettings?.facebook_url || ''};
+  Object.entries(links).forEach(([name,url]) => {
+    const element = document.querySelector(`.hp-soc-${name}`);
+    if (!element) return;
+    if (typeof url === 'string' && url.startsWith('https://')) {
+      element.href = url;
+      element.hidden = false;
+      element.style.display = '';
+    } else {
+      element.removeAttribute('href');
+      element.hidden = true;
+      element.style.display = 'none';
+    }
+  });
+};
+
 function setSiteText(id, value) {
   const node = $(id);
 
@@ -1363,6 +1409,8 @@ async function loadSiteSettings() {
     );
 
     setOptionalSiteLink("site-facebook", "Facebook", siteSettings.facebook_url);
+
+    window.applyConfiguredHomepage(document.documentElement.lang);
   } catch (error) {
     console.warn("Không thể tải site settings", error);
   }
@@ -1885,7 +1933,10 @@ async function loadHomepageSlides() {
     const data = await response.json();
     const remoteSlides = Array.isArray(data.slides) ? data.slides : [];
 
-    if (remoteSlides.length && remoteSlides[0].image_url) {
+    if (!remoteSlides.length) {
+      homepageUsingFallback = false;
+      renderHomepageSlides([]);
+    } else if (remoteSlides[0].image_url) {
       const probe = new Image();
       probe.onload = () => {
         homepageUsingFallback = false;

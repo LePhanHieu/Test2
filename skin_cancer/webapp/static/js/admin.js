@@ -2,8 +2,8 @@
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const labels = {
-    vi: { dashboard: "Dashboard Tổng Quan", accounts: "Quản Lý Tài Khoản", security: "Phiên Đăng Nhập & Bảo Mật", profile: "Hồ sơ & Bảo mật cá nhân", ai: "Quản Lý AI & Ca Khám", doctors: "Quản Lý Bác Sĩ & Duyệt", reports: "Thống Kê & Báo Cáo" },
-    en: { dashboard: "Overview Dashboard", accounts: "Account Management", security: "Login Sessions & Security", profile: "Profile & Personal Security", ai: "AI & Case Management", doctors: "Doctors & Approvals", reports: "Statistics & Reports" },
+    vi: { dashboard: "Dashboard Tổng Quan", homepage: "Quản lý trang chủ", accounts: "Quản Lý Tài Khoản", security: "Phiên Đăng Nhập & Bảo Mật", profile: "Hồ sơ & Bảo mật cá nhân", ai: "Quản Lý AI & Ca Khám", doctors: "Quản Lý Bác Sĩ & Duyệt", reports: "Thống Kê & Báo Cáo" },
+    en: { dashboard: "Overview Dashboard", homepage: "Homepage Management", accounts: "Account Management", security: "Login Sessions & Security", profile: "Profile & Personal Security", ai: "AI & Case Management", doctors: "Doctors & Approvals", reports: "Statistics & Reports" },
   };
   const adminTranslations = {
     vi: {
@@ -91,7 +91,7 @@
     setText(".hp-user-meta small", t.admin);
     setText("#logout", t.logout);
     setText("#breadcrumb", t.dashboard);
-    ["dashboard", "accounts", "security", "profile", "ai", "doctors", "reports"].forEach((name) => {
+    ["dashboard", "homepage", "accounts", "security", "profile", "ai", "doctors", "reports"].forEach((name) => {
       const item = $(`.nav-item[data-module="${name}"] span:last-child`);
       if (item) item.textContent = labels[currentLanguage][name];
     });
@@ -313,6 +313,7 @@
     if (name === "accounts") loadUsers();
     if (name === "doctors") loadDoctorApplications();
     if (name === "security") loadAdminSecurity();
+    if (name === "homepage" && typeof window.loadHomepageManager === "function") window.loadHomepageManager();
   }
 
   $$(".nav-item").forEach((item) => item.addEventListener("click", () => showModule(item.dataset.module)));
