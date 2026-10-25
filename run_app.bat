@@ -34,7 +34,7 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-python -m flask --app skin_cancer.webapp.database_app setup-initial
+python -m flask --app skin_cancer.webapp.database_app setup-initial --local-starter-accounts
 if errorlevel 1 (
     echo [LOI] Thiet lap tai khoan that bai. Kiem tra database va thu lai.
     pause
@@ -47,7 +47,7 @@ echo [3/3] Dang khoi dong may chu Web va AI...
 echo.
 echo -------------------------------------------------------------------------------
 echo   - Dia chi Web   : http://localhost:5000
-echo   - Tai khoan    : ADMIN, DOCTOR, USER da khoi tao bang setup-initial
+echo   - Tai khoan    : admin@dermascan.local, doctor@dermascan.local, patient@dermascan.local
 echo   - Cache du lieu : SQLite Disk Cache (instance\cache.db - Khong can Docker)
 echo   - Background AI : Tu dong chay ngam (Khong can mo them terminal khac)
 echo   - Dung server   : Nhan to hop phim Ctrl + C

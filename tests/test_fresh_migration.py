@@ -44,3 +44,26 @@ def test_fresh_migrations_then_setup_produce_only_initial_data(tmp_path):
         assert conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 3
         assert conn.execute("SELECT COUNT(*) FROM slides").fetchone()[0] == 2
         assert conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0] == 0
+
+
+def test_migrations_and_noninteractive_local_starter_accounts(tmp_path):
+    target = tmp_path / "local_starters.db"
+    environ = dict(os.environ)
+    environ.update({
+        "SECRET_KEY": "isolated-starter-test-key",
+        "DATABASE_URL": f"sqlite:///{target}",
+    })
+    for args in [
+        [sys.executable, "-m", "flask", "--app", FLASK_ENTRY, "db", "upgrade"],
+        [sys.executable, "-m", "flask", "--app", FLASK_ENTRY, "setup-initial", "--local-starter-accounts"],
+    ]:
+        result = subprocess.run(args, cwd=REPO_ROOT, env=environ,
+                                text=True, capture_output=True, check=False)
+        assert result.returncode == 0, result.stderr + result.stdout
+    with sqlite3.connect(target) as conn:
+        assert set(conn.execute("SELECT email, role FROM users")) == {
+            ("admin@dermascan.local", "ADMIN"),
+            ("doctor@dermascan.local", "DOCTOR"),
+            ("patient@dermascan.local", "USER"),
+        }
+        assert conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0] == 0

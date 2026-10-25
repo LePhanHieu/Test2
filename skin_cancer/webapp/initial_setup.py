@@ -1,4 +1,4 @@
-"""One-time, interactive initialization for a fresh local DermaScan database.
+"""One-time initialization for a fresh local DermaScan database.
 
 This is not a demo seed: it never creates patient cases or analysis results.
 """
@@ -28,6 +28,14 @@ INITIAL_SLIDES = (
     },
 )
 
+LOCAL_STARTER_PASSWORD = "123456123456"  # Local development only; never use in production.
+LOCAL_STARTER_ACCOUNTS = {
+    "ADMIN": ("Quản trị viên", "admin@dermascan.local", LOCAL_STARTER_PASSWORD),
+    "DOCTOR": ("Bác sĩ", "doctor@dermascan.local", LOCAL_STARTER_PASSWORD),
+    "USER": ("Người dùng A", "patient@dermascan.local", LOCAL_STARTER_PASSWORD),
+}
+LOCAL_STARTER_EMAILS = {account[1] for account in LOCAL_STARTER_ACCOUNTS.values()}
+
 LEGACY_DEMO_EMAILS = frozenset({
     "admin@dermascan.local", "doctor@dermascan.local",
     "patient@dermascan.local", "patient2@dermascan.local",
@@ -40,8 +48,14 @@ def _already_initialized():
     if not users:
         return False
 
-    if any(user.email in LEGACY_DEMO_EMAILS for user in users) or db.session.scalar(
-        db.select(Case.id).where(Case.case_code.like("DEMO-%"))
+    if db.session.scalar(db.select(Case.id).where(Case.case_code.like("DEMO-%"))):
+        raise click.ClickException(
+            "Database đang chứa dữ liệu demo; hãy chọn SQLite mới qua DATABASE_URL."
+        )
+
+    existing_emails = {user.email for user in users}
+    if any(email in LEGACY_DEMO_EMAILS for email in existing_emails) and (
+        len(users) != 3 or existing_emails != LOCAL_STARTER_EMAILS
     ):
         raise click.ClickException(
             "Database đang chứa dữ liệu demo; hãy chọn SQLite mới qua DATABASE_URL."
@@ -59,7 +73,7 @@ def _already_initialized():
     )
 
 
-def provision_initial_data(accounts):
+def provision_initial_data(accounts, *, allow_local_starter_emails=False):
     """Create the three owner-specified users and existing branding atomically."""
     if set(accounts) != {"ADMIN", "DOCTOR", "USER"}:
         raise ValueError("Cần đủ ba vai trò ADMIN, DOCTOR và USER.")
@@ -73,7 +87,8 @@ def provision_initial_data(accounts):
             if not isinstance(name, str) or not 2 <= len(name.strip()) <= 150:
                 raise ValueError(f"Họ tên {role} phải có 2–150 ký tự.")
             if isinstance(email, str) and email.strip().lower() in LEGACY_DEMO_EMAILS:
-                raise ValueError(f"Email {role} thuộc tài khoản demo cũ; hãy dùng email thật.")
+                if not (allow_local_starter_emails and email.strip().lower() == LOCAL_STARTER_ACCOUNTS[role][1]):
+                    raise ValueError(f"Email {role} thuộc tài khoản demo cũ; hãy dùng email thật.")
             user = User(
                 full_name=name.strip(), email=email, role=role,
                 is_active=True, email_verified=True,
@@ -99,25 +114,33 @@ def provision_initial_data(accounts):
 
 def register_initial_setup(app):
     @app.cli.command("setup-initial")
-    def setup_initial_command():
+    @click.option(
+        "--local-starter-accounts", is_flag=True,
+        help="Tự động tạo 3 tài khoản cố định chỉ dành cho máy phát triển.",
+    )
+    def setup_initial_command(local_starter_accounts):
         """Provision ADMIN, DOCTOR and USER once on an empty SQLite database."""
         if _already_initialized():
             click.echo("Database đã được thiết lập; giữ nguyên các tài khoản hiện tại.")
             return
 
-        click.echo("Thiết lập 3 tài khoản thật, không dùng dữ liệu demo.")
-        accounts = {}
-        for role in ("ADMIN", "DOCTOR", "USER"):
-            full_name = click.prompt(f"Họ tên {role}", type=str)
-            email = click.prompt(f"Email {role}", type=str)
-            password = click.prompt(
-                f"Mật khẩu {role} (12–256 ký tự)",
-                hide_input=True, confirmation_prompt=True,
-            )
-            accounts[role] = (full_name, email, password)
+        if local_starter_accounts:
+            click.echo("CHỈ DÀNH CHO PHÁT TRIỂN: tạo 3 tài khoản cố định, không có ca bệnh demo.")
+            accounts = LOCAL_STARTER_ACCOUNTS
+        else:
+            click.echo("Thiết lập 3 tài khoản thật, không dùng dữ liệu demo.")
+            accounts = {}
+            for role in ("ADMIN", "DOCTOR", "USER"):
+                full_name = click.prompt(f"Họ tên {role}", type=str)
+                email = click.prompt(f"Email {role}", type=str)
+                password = click.prompt(
+                    f"Mật khẩu {role} (12–256 ký tự)",
+                    hide_input=True, confirmation_prompt=True,
+                )
+                accounts[role] = (full_name, email, password)
 
         try:
-            provision_initial_data(accounts)
+            provision_initial_data(accounts, allow_local_starter_emails=local_starter_accounts)
         except IntegrityError as error:
             raise click.ClickException(
                 "Email trùng hoặc ràng buộc database không hợp lệ; "

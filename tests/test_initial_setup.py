@@ -140,3 +140,38 @@ def test_initial_doctor_and_user_can_log_in_without_demo_seed(app, email, passwo
     )
     assert response.status_code == 200
     assert response.get_json()["user"]["role"] == role
+
+
+def test_local_starter_accounts_created_without_any_prompt(app):
+    result = app.test_cli_runner().invoke(args=["setup-initial", "--local-starter-accounts"], input="")
+    assert result.exit_code == 0, result.output
+    with app.app_context():
+        expected = {
+            "admin@dermascan.local": "ADMIN",
+            "doctor@dermascan.local": "DOCTOR",
+            "patient@dermascan.local": "USER",
+        }
+        users = db.session.scalars(db.select(User)).all()
+        assert len(users) == len(expected)
+        assert {u.email: u.role for u in users} == expected
+        assert all(u.check_password("123456123456") for u in users)
+        assert all(u.password_hash != "123456123456" for u in users)
+        assert db.session.scalar(db.select(db.func.count(Case.id))) == 0
+        assert db.session.scalar(db.select(db.func.count(Slide.id))) == 2
+    assert "123456123456" not in result.output
+
+
+def test_local_starter_account_setup_is_repeatable_and_preserves_changes(app):
+    runner = app.test_cli_runner()
+    assert runner.invoke(args=["setup-initial", "--local-starter-accounts"]).exit_code == 0
+    with app.app_context():
+        doctor = db.session.scalar(db.select(User).where(User.email == "doctor@dermascan.local"))
+        doctor.set_password("NewDoctorPassword123!")
+        db.session.commit()
+    again = runner.invoke(args=["setup-initial", "--local-starter-accounts"], input="")
+    assert again.exit_code == 0, again.output
+    with app.app_context():
+        doctor = db.session.scalar(db.select(User).where(User.email == "doctor@dermascan.local"))
+        assert doctor.check_password("NewDoctorPassword123!")
+        assert db.session.scalar(db.select(db.func.count(User.id))) == 3
+
