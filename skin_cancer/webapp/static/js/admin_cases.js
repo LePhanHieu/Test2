@@ -4,6 +4,17 @@
   const display = (value) => value === null || value === undefined || value === "" ? "—" : escapeHtml(value);
   const fmtDate = (date) => date ? new Date(date).toLocaleDateString("vi-VN") : "—";
   const statusLabels = { CREATED: "Mới tạo", UPLOADED: "Đã tải ảnh", ANALYZED: "Đã phân tích", REVIEWED: "Đã đánh giá", COMPLETED: "Hoàn thành" };
+  const classLabels = { MEL: "U hắc tố (Melanoma)", NV: "Nốt ruồi sắc tố (Nevus)", BCC: "Ung thư biểu mô tế bào đáy", SCC: "Ung thư biểu mô tế bào vảy", AK: "Dày sừng ánh sáng", AKIEC: "Dày sừng ánh sáng", BKL: "Dày sừng lành tính", DF: "U xơ da", VASC: "Tổn thương mạch máu" };
+  const icon = (name) => ({
+    person: '<circle cx="12" cy="7" r="3"/><path d="M5.5 21v-2a6.5 6.5 0 0 1 13 0v2"/>',
+    scan: '<circle cx="12" cy="12" r="3"/><path d="M5 3h3M3 5v3M19 3h-3M21 5v3M3 16v3h3M21 16v3h-3"/>',
+    note: '<path d="M7 3h8l4 4v14H7z"/><path d="M15 3v5h4M10 13h6M10 17h5"/>',
+    care: '<rect x="4" y="7" width="16" height="14" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M4 12h16M12 10v5M9.5 12.5h5"/>',
+    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1"/><path d="m4 18 6-6 4 3 3-4 4 5"/>',
+  }[name]);
+  const sectionTitle = (name, title) => `<div class="case-section-heading"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon(name)}</svg><strong>${title}</strong></div>`;
+  const section = (name, title, content) => `<section class="case-medical-section">${sectionTitle(name, title)}${content}</section>`;
+  const safePercent = (value) => typeof value === "number" && Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : "—";
   let page = 1;
   let pages = 1;
   let requestId = 0;
@@ -50,16 +61,26 @@
   async function openCaseDetail(caseId) {
     const modal = $("#admin-case-modal");
     modal.classList.add("open");
+    $("#case-detail-title").textContent = "Chi tiết chẩn đoán & Hướng điều trị";
+    $("#case-detail-subtitle").textContent = "Đang tải thông tin ca khám...";
     $("#admin-case-detail").textContent = "Đang tải chi tiết...";
     try {
       const item = await getJson(`/api/admin/cases/${caseId}`);
       if (!modal.classList.contains("open")) return;
-      $("#case-detail-title").textContent = `Ca khám ${item.code}`;
-      const overview = `<div class="case-detail-info"><p><b>Bệnh nhân:</b> ${display(item.patient)}</p><p><b>Bác sĩ:</b> ${display(item.doctor)}</p><p><b>Ngày tạo:</b> ${fmtDate(item.created_at)}</p><p><b>Vị trí tổn thương:</b> ${display(item.lesion_location)}</p><p><b>Trạng thái:</b> ${display(statusLabels[item.status] || item.status)}</p></div>`;
-      const images = (item.images || []).map((image) => `<figure><img src="${image.url}" alt="Ảnh Dermoscopy" loading="lazy"/><figcaption>${display(image.filename)} · ${display(image.status)}</figcaption></figure>`).join("");
-      const analyses = (item.analyses || []).map((analysis) => `<div class="case-analysis"><b>Phân tích #${analysis.id} · ${display(analysis.status)}</b><p>Diện tích: ${display(analysis.area)} px² · Chu vi: ${display(analysis.perimeter)} px · Tỷ lệ: ${analysis.ratio == null ? "—" : (analysis.ratio * 100).toFixed(2) + "%"}</p>${(analysis.results || []).map((result) => `<p>${display(result.model)}: ${display(result.class)} · Độ tin cậy: ${result.probability == null ? "—" : (result.probability * 100).toFixed(2) + "%"}</p>`).join("")}${analysis.gradcam_url ? `<img src="${analysis.gradcam_url}" alt="Grad-CAM" loading="lazy"/>` : ""}${analysis.contour_url ? `<img src="${analysis.contour_url}" alt="Khoanh vùng tổn thương" loading="lazy"/>` : ""}</div>`).join("");
-      const reviews = (item.reviews || []).map((review) => `<div class="case-analysis"><b>${display(review.doctor)} · ${display(review.status)}</b><p>Ghi chú: ${display(review.note)}</p><p>Kết luận: ${display(review.conclusion)}</p><p>Khuyến nghị: ${display(review.recommendation)}</p></div>`).join("");
-      $("#admin-case-detail").innerHTML = `${overview}<h3>Ảnh Dermoscopy</h3><div class="case-images">${images || "Chưa có ảnh."}</div><h3>Kết quả phân tích đã lưu</h3>${analyses || "Chưa có kết quả."}<h3>Nhận xét bác sĩ</h3>${reviews || "Chưa có nhận xét."}`;
+      $("#case-detail-subtitle").innerHTML = `Mã hồ sơ: <b>${display(item.code)}</b> · Ngày khám: ${fmtDate(item.created_at)}`;
+      const overview = section("person", "Thông tin ca khám & Bác sĩ phụ trách", `<div class="case-medical-facts"><span>Vị trí tổn thương: <b>${display(item.lesion_location)}</b></span><span>Bác sĩ chẩn đoán: <b>${display(item.doctor)}</b></span><span>Trạng thái ca: <b>${display(item.status)}</b></span><span>Bệnh nhân: <b>${display(item.patient)}</b></span></div>`);
+      const analyses = (item.analyses || []).flatMap((analysis) => (analysis.results || []).map((result) => ({ analysis, result })));
+      const classifications = analyses.map(({ analysis, result }) => `<div class="case-medical-result"><span class="case-ai-pill">Phân loại AI: ${result.binary === 0 ? "Lành tính" : result.binary === 1 ? "Nghi ngờ ác tính" : "Chưa xác định"} · Độ tin cậy: ${safePercent(result.probability)}</span><p><b>${display(classLabels[result.class] || result.class)}</b></p><p class="case-medical-muted">Mô hình: ${display(result.model)} · Phân tích #${analysis.id}</p>${analysis.area == null ? "" : `<p class="case-medical-muted">Diện tích: ${display(analysis.area)} px² · Chu vi: ${display(analysis.perimeter)} px · Tỷ lệ: ${safePercent(analysis.ratio)}</p>`}</div>`).join("");
+      const ai = section("scan", "Kết quả phân loại hình ảnh học DermaScan AI", classifications || '<p class="case-medical-muted">Chưa có kết quả phân tích được lưu.</p>');
+      const reviews = (item.reviews || []);
+      const medicalNotes = reviews.map((review) => `<div class="case-medical-callout green"><span>KẾT LUẬN Y KHOA:</span><p>${display(review.conclusion)}</p><small>Ghi chú lâm sàng: ${display(review.note)}</small><small>Bác sĩ: ${display(review.doctor)}</small></div>`).join("");
+      const doctor = section("note", "Nhận định chẩn đoán lâm sàng của Bác sĩ", medicalNotes || '<p class="case-medical-muted">Chưa có nhận xét chuyên môn được lưu.</p>');
+      const recommendations = reviews.map((review) => `<div class="case-medical-callout orange"><span>HƯỚNG ĐIỀU TRỊ / KHUYẾN NGHỊ:</span><p>${display(review.recommendation)}</p></div>`).join("");
+      const care = section("care", "Hướng điều trị & Khuyến nghị chăm sóc", recommendations || '<p class="case-medical-muted">Chưa có khuyến nghị từ bác sĩ.</p>');
+      const images = (item.images || []).map((image) => `<figure><img src="${image.url}" alt="Ảnh Dermoscopy" loading="lazy"/><figcaption>${display(image.filename)}</figcaption></figure>`).join("");
+      const additionalImages = (item.analyses || []).flatMap((analysis) => [analysis.gradcam_url ? `<figure><img src="${analysis.gradcam_url}" alt="Ảnh Grad-CAM" loading="lazy"/><figcaption>Grad-CAM #${analysis.id}</figcaption></figure>` : "", analysis.contour_url ? `<figure><img src="${analysis.contour_url}" alt="Ảnh khoanh vùng tổn thương" loading="lazy"/><figcaption>Khoanh vùng #${analysis.id}</figcaption></figure>` : ""]).join("");
+      const gallery = images || additionalImages ? section("image", "Hình ảnh ca khám", `<div class="case-images">${images}${additionalImages}</div>`) : "";
+      $("#admin-case-detail").innerHTML = overview + ai + doctor + care + gallery;
     } catch (error) { $("#admin-case-detail").textContent = error.message; }
   }
 

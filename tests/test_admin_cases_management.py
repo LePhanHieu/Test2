@@ -29,6 +29,22 @@ def test_admin_cases_ui_has_list_filters_pagination_and_details():
     assert "async function loadAdminCases()" in js
 
 
+def test_case_screen_matches_approved_compact_layout():
+    html = (ROOT / "templates" / "admin.html").read_text(encoding="utf-8")
+    script = (ROOT / "static" / "js" / "admin_cases.js").read_text(encoding="utf-8")
+    css = (ROOT / "static" / "css" / "admin.css").read_text(encoding="utf-8")
+    case_section = html.split('id="module-ai"', 1)[1].split('id="module-doctors"', 1)[0]
+    assert "QUẢN TRỊ / CA KHÁM" not in case_section
+    assert "Tra cứu ca khám và xem thông tin đã lưu" not in case_section
+    assert 'id="case-prev" aria-label="Trang trước"' in case_section
+    assert 'id="case-next" aria-label="Trang sau"' in case_section
+    assert "Chi tiết chẩn đoán &amp; Hướng điều trị" in html
+    assert "case-medical-section" in script
+    assert "case-medical-callout green" in script
+    assert "case-medical-callout orange" in script
+    assert ".case-detail-modal { width:min(585px" in css
+
+
 @pytest.fixture()
 def app(tmp_path):
     application = create_app({

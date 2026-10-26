@@ -17,7 +17,7 @@ html[data-theme="dark"]{--bg:#0f172a;--surface:#1e293b;--text:#f8fafc;--muted:#9
 #case-count { font-size:12px; color:var(--muted); margin:20px 0 0; }
 .case-pages { display:flex; justify-content:flex-end; align-items:center; gap:12px; margin-top:17px; font-size:12px; }
 .case-pages button:disabled { opacity:.45; cursor:not-allowed; }
-.case-detail-modal { width:min(900px,100%); max-height:88vh; overflow-y:auto; }
+.case-detail-modal { width:min(585px,100%); max-height:min(92vh,900px); overflow-y:auto; padding:22px 28px 26px; border-radius:15px; }
 .case-detail-info { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:2px 14px; }
 .case-detail-info p,.case-analysis p { font-size:12px; line-height:1.6; overflow-wrap:anywhere; }
 #admin-case-detail h3 { font:700 15px Manrope,sans-serif; border-top:1px solid var(--line); padding-top:15px; margin-top:20px; }
@@ -28,6 +28,36 @@ html[data-theme="dark"]{--bg:#0f172a;--surface:#1e293b;--text:#f8fafc;--muted:#9
 .case-analysis { border:1px solid var(--line); border-radius:9px; padding:12px; margin:9px 0; }
 @media(max-width:1200px) { .case-filters { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 @media(max-width:720px) { .case-stats { grid-template-columns:1fr; } .case-filters { grid-template-columns:1fr 1fr; } .case-filters label:first-child { grid-column:1/-1; } .case-detail-info { grid-template-columns:1fr; } }
+.case-page-arrow { width:37px; height:37px; display:inline-flex; align-items:center; justify-content:center; padding:0; color:var(--green); border-color:#d3eadb; background:#f3fbf6; }
+.case-page-arrow:hover:not(:disabled) { background:#e8f7ed; border-color:var(--green); }
+.case-detail-header { display:flex; align-items:flex-start; gap:10px; padding:8px 1px 17px; border-bottom:1px solid var(--line); margin-bottom:17px; }
+.case-detail-heartbeat { display:inline-flex; color:var(--green); margin-top:3px; flex-shrink:0; }
+.case-detail-heading { flex:1; min-width:0; }
+.case-detail-heading h2 { font:800 15px Manrope,sans-serif; margin:0 0 5px; color:var(--text); }
+.case-detail-heading p { font-size:10px; color:var(--muted); margin:0; line-height:1.6; overflow-wrap:anywhere; }
+.case-detail-heading p b { color:var(--green); }
+.case-detail-close { width:26px; height:26px; display:inline-grid; place-items:center; background:var(--surface); border:1px solid var(--line); border-radius:7px; color:var(--muted); flex-shrink:0; }
+.case-detail-close:hover { color:var(--orange); border-color:var(--orange); }
+.case-medical-section { background:#f7f9fa; border:1px solid #d9e5e2; border-radius:12px; padding:15px 14px; margin:15px 0; }
+html[data-theme="dark"] .case-medical-section { background:#192735; border-color:#375047; }
+.case-section-heading { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text); margin-bottom:12px; }
+.case-section-heading svg { color:var(--green); flex-shrink:0; }
+.case-medical-facts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px 12px; font-size:10px; color:var(--muted); }
+.case-medical-facts b { color:var(--text); font-weight:700; }
+.case-medical-result { margin-top:10px; font-size:11px; }
+.case-medical-result:first-of-type { margin-top:0; }
+.case-ai-pill { display:inline-block; padding:8px 11px; background:#dff5e6; color:#209b49; border:1px solid #a0dbb3; border-radius:8px; font-weight:700; font-size:11px; }
+.case-medical-result p { margin:9px 0 0; line-height:1.5; }
+.case-medical-muted { color:var(--muted); font-size:11px; line-height:1.5; margin:6px 0; }
+.case-medical-callout { background:var(--surface); border-left:3px solid var(--green); border-radius:0 9px 9px 0; padding:13px 13px 12px; margin:8px 0; font-size:11px; }
+.case-medical-callout span { font-size:10px; font-weight:700; color:var(--green); }
+.case-medical-callout p { margin:6px 0; line-height:1.55; overflow-wrap:anywhere; }
+.case-medical-callout small { display:block; color:var(--muted); line-height:1.6; overflow-wrap:anywhere; }
+.case-medical-callout.orange { border-left-color:var(--orange); }
+.case-medical-callout.orange span { color:var(--orange); }
+.case-medical-section .case-images { grid-template-columns:repeat(auto-fill,minmax(125px,1fr)); }
+@media(max-width:620px) { .case-detail-modal { padding:18px 14px; } .case-medical-facts { grid-template-columns:1fr 1fr; } }
+@media(max-width:390px) { .case-medical-facts { grid-template-columns:1fr; } }
 
 .sidebar .brand {
   gap: 12px;
