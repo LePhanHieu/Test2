@@ -264,12 +264,27 @@
     legend.innerHTML = distribution.map((item) => `<span title="${escapeHtml(item.name)}"><i class="dot ${item.type === "benign" ? "green-dot" : "orange-dot"}"></i>${escapeHtml(item.label)}<b>${Number(item.percentage || 0).toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%</b></span>`).join("");
   }
 
+  let accountFiltersInitialized = false;
+  let accountListRequestId = 0;
+  function resetAccountFilters() {
+    $("#user-search").value = "";
+    $("#role-filter").value = "";
+    $("#status-filter").value = "";
+    loadUsers();
+  }
+
   async function loadUsers() {
+    const requestId = ++accountListRequestId;
     const params = new URLSearchParams({ search: $("#user-search").value, role: $("#role-filter").value, status: $("#status-filter").value });
     try {
       const data = await api(`/api/admin/users?${params}`);
+      if (requestId !== accountListRequestId) return;
+      const count = data.users.length;
+      $("#users-count").textContent = count
+        ? `Đang hiển thị ${count} tài khoản${count === 100 ? " (tối đa 100 kết quả)" : ""}.`
+        : "Không có tài khoản phù hợp. Hãy thử xóa bộ lọc.";
       $("#users-table").innerHTML = data.users.length ? data.users.map((user) => `<tr><td><span class="table-user"><span class="avatar">${escapeHtml(user.name.slice(0, 1).toUpperCase())}</span><b>${escapeHtml(user.name)}</b></span></td><td>${escapeHtml(user.email)}</td><td><select class="role-select" data-update-role="${user.id}"><option value="USER" ${user.role === "USER" ? "selected" : ""}>User</option><option value="DOCTOR" ${user.role === "DOCTOR" ? "selected" : ""}>Doctor</option><option value="ADMIN" ${user.role === "ADMIN" ? "selected" : ""}>Admin</option></select></td><td>${badge(user.active)}</td><td><div class="action-btn-group"><button class="row-actions action-icon-btn ${user.active ? 'btn-lock' : 'btn-unlock'} has-tooltip" data-toggle-user="${user.id}" data-tooltip="${user.active ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}" title="${user.active ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}" aria-label="${user.active ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}">${user.active ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>'}</button> <button class="row-actions action-icon-btn btn-delete has-tooltip" data-delete-user="${user.id}" data-tooltip="Xóa tài khoản" title="Xóa tài khoản" aria-label="Xóa tài khoản"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button></div></td></tr>`).join("") : `<tr><td colspan="5" class="loading">Không tìm thấy tài khoản phù hợp.</td></tr>`;
-    } catch (error) { $("#users-table").innerHTML = `<tr><td colspan="5" class="loading">${escapeHtml(translateAdminText(error.message))}</td></tr>`; }
+    } catch (error) { if (requestId !== accountListRequestId) return; $("#users-count").textContent = "Không tải được danh sách tài khoản."; $("#users-table").innerHTML = `<tr><td colspan="5" class="loading">${escapeHtml(translateAdminText(error.message))}</td></tr>`; }
   }
 
   async function loadDoctorApplications() {
@@ -310,7 +325,12 @@
     $("#page-title").textContent = labels[currentLanguage][name];
     $("#breadcrumb").textContent = name.toUpperCase();
     $("#sidebar").classList.remove("open");
-    if (name === "accounts") loadUsers();
+    if (name === "accounts") {
+      if (!accountFiltersInitialized) {
+        accountFiltersInitialized = true;
+        resetAccountFilters();
+      } else loadUsers();
+    }
     if (name === "doctors") loadDoctorApplications();
     if (name === "security") loadAdminSecurity();
     if (name === "homepage" && typeof window.loadHomepageManager === "function") window.loadHomepageManager();
@@ -326,6 +346,7 @@
   $("#mobile-menu").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
   $("#collapse-sidebar").addEventListener("click", () => { $("#sidebar").classList.toggle("collapsed"); });
   $("#user-search").addEventListener("input", loadUsers); $("#role-filter").addEventListener("change", loadUsers); $("#status-filter").addEventListener("change", loadUsers);
+  $("#user-reset-filters").addEventListener("click", resetAccountFilters);
   $("#users-table").addEventListener("click", async (event) => { const button = event.target.closest("[data-toggle-user]"); if (!button || !confirm("Thay đổi trạng thái tài khoản này?")) return; try { await api(`/api/admin/users/${button.dataset.toggleUser}/status`, { method: "PATCH" }); loadUsers(); } catch (error) { alert(error.message); } });
   $("#users-table").addEventListener("click", async (event) => { const button = event.target.closest("[data-delete-user]"); if (!button || !confirm("Xóa mềm tài khoản này?")) return; try { await api(`/api/admin/users/${button.dataset.deleteUser}`, { method: "DELETE" }); loadUsers(); } catch (error) { alert(error.message); } });
   $("#users-table").addEventListener("change", async (event) => { const select = event.target.closest("[data-update-role]"); if (!select) return; try { await api(`/api/admin/users/${select.dataset.updateRole}/role`, { method: "PATCH", body: JSON.stringify({ role: select.value }) }); } catch (error) { alert(error.message); loadUsers(); } });

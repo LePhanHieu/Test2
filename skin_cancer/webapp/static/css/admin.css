@@ -96,3 +96,15 @@ html[data-theme="dark"]{--bg:#0f172a;--surface:#1e293b;--text:#f8fafc;--muted:#9
   color: #2ba149;
   box-shadow: 0 0 0 1px rgba(43, 161, 73, 0.12);
 }
+
+/* Account list: visible filtering controls and result feedback. */
+#module-accounts #user-reset-filters {
+  white-space: nowrap;
+  min-height: 40px;
+}
+
+#module-accounts .account-results-count {
+  margin: 12px 0 10px;
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+}
