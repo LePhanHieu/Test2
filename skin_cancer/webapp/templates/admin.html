@@ -95,7 +95,7 @@
           <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a6 6 0 0 1 12 0v2"/></svg></span><span>Hồ sơ &amp; Bảo mật cá nhân</span>
         </button>
         <button class="nav-item" data-module="ai">
-          <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg></span><span>Quản Lý AI &amp; Ca Khám</span>
+          <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg></span><span>Quản lý ca khám</span>
         </button>
         <button class="nav-item" data-module="doctors">
           <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg></span><span>Quản Lý Bác Sĩ &amp; Duyệt</span>
@@ -650,23 +650,27 @@
             </section>
           </div>
         </section>
-        <section class="module placeholder" id="module-ai">
-          <div class="module-actions" style="display:flex; justify-content:flex-end; margin-bottom:16px;">
-            <span class="model-badge">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-              EfficientNet-B0 <small>Production</small>
-            </span>
+        <section class="module" id="module-ai">
+          <div class="module-heading">
+            <div><p class="eyebrow">QUẢN TRỊ / CA KHÁM</p><h2>Quản lý ca khám</h2><p>Tra cứu ca khám và xem thông tin đã lưu. Chế độ chỉ đọc.</p></div>
           </div>
-          <div class="panel empty-panel">
-            <span style="display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px; border-radius:50%; background:#f0fbf4; color:#2ba149; margin-bottom:12px;">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-            </span>
-            <h3>Luồng phân tích</h3>
-            <p>
-              Dữ liệu chi tiết Case và Analysis được lấy trực tiếp từ cơ sở dữ
-              liệu.
-            </p>
-            <button class="outline">Mở danh sách ca khám</button>
+          <div class="case-stats" aria-label="Thống kê ca khám">
+            <div class="panel"><small>TỔNG CA KHÁM</small><b id="case-total">—</b></div>
+            <div class="panel"><small>CHƯA HOÀN THÀNH</small><b id="case-processing">—</b></div>
+            <div class="panel"><small>HOÀN THÀNH</small><b id="case-completed">—</b></div>
+          </div>
+          <div class="panel case-list-panel">
+            <div class="case-filters">
+              <label>Tìm kiếm<input id="case-search" placeholder="Mã ca, bệnh nhân hoặc bác sĩ" autocomplete="off" /></label>
+              <label>Trạng thái<select id="case-status"><option value="">Tất cả</option><option value="CREATED">Mới tạo</option><option value="UPLOADED">Đã tải ảnh</option><option value="ANALYZED">Đã phân tích</option><option value="REVIEWED">Đã đánh giá</option><option value="COMPLETED">Hoàn thành</option></select></label>
+              <label>Bác sĩ<select id="case-doctor"><option value="">Tất cả bác sĩ</option></select></label>
+              <label>Từ ngày<input id="case-from" type="date" /></label>
+              <label>Đến ngày<input id="case-to" type="date" /></label>
+              <button class="outline" id="case-reset" type="button">Xóa bộ lọc</button>
+            </div>
+            <p id="case-count" aria-live="polite">Đang tải danh sách...</p>
+            <div class="table-wrap"><table><thead><tr><th>Mã ca</th><th>Bệnh nhân</th><th>Bác sĩ</th><th>Ngày tạo</th><th>Trạng thái</th><th>Chi tiết</th></tr></thead><tbody id="admin-cases-table"><tr><td colspan="6" class="loading">Đang tải...</td></tr></tbody></table></div>
+            <div class="case-pages"><button type="button" class="outline" id="case-prev">Trước</button><span id="case-page">Trang 1/1</span><button type="button" class="outline" id="case-next">Sau</button></div>
           </div>
         </section>
         <section class="module" id="module-doctors">
@@ -723,6 +727,13 @@
         </section>
       </div>
     </main>
+    <div class="modal-backdrop" id="admin-case-modal">
+      <section class="modal case-detail-modal" role="dialog" aria-modal="true" aria-labelledby="case-detail-title">
+        <button type="button" class="modal-close" id="close-case-detail" aria-label="Đóng">×</button>
+        <p class="eyebrow">THÔNG TIN CA KHÁM · CHỈ ĐỌC</p><h2 id="case-detail-title">Chi tiết ca khám</h2>
+        <div id="admin-case-detail" aria-live="polite"></div>
+      </section>
+    </div>
     <div class="modal-backdrop" id="user-modal">
       <form class="modal" id="user-form">
         <button type="button" class="modal-close" id="close-modal">×</button>
@@ -748,6 +759,7 @@
       </form>
     </div>
     <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/admin_cases.js') }}"></script>
     <script src="{{ url_for('static', filename='js/homepage_management.js') }}"></script>
   </body>
 </html>

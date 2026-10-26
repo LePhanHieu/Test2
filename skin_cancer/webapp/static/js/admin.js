@@ -2,8 +2,8 @@
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const labels = {
-    vi: { dashboard: "Dashboard Tổng Quan", homepage: "Quản lý trang chủ", accounts: "Quản Lý Tài Khoản", security: "Phiên Đăng Nhập & Bảo Mật", profile: "Hồ sơ & Bảo mật cá nhân", ai: "Quản Lý AI & Ca Khám", doctors: "Quản Lý Bác Sĩ & Duyệt", reports: "Thống Kê & Báo Cáo" },
-    en: { dashboard: "Overview Dashboard", homepage: "Homepage Management", accounts: "Account Management", security: "Login Sessions & Security", profile: "Profile & Personal Security", ai: "AI & Case Management", doctors: "Doctors & Approvals", reports: "Statistics & Reports" },
+    vi: { dashboard: "Dashboard Tổng Quan", homepage: "Quản lý trang chủ", accounts: "Quản Lý Tài Khoản", security: "Phiên Đăng Nhập & Bảo Mật", profile: "Hồ sơ & Bảo mật cá nhân", ai: "Quản lý ca khám", doctors: "Quản Lý Bác Sĩ & Duyệt", reports: "Thống Kê & Báo Cáo" },
+    en: { dashboard: "Overview Dashboard", homepage: "Homepage Management", accounts: "Account Management", security: "Login Sessions & Security", profile: "Profile & Personal Security", ai: "Case Management", doctors: "Doctors & Approvals", reports: "Statistics & Reports" },
   };
   const adminTranslations = {
     vi: {
@@ -16,8 +16,7 @@
       quick: "Truy cập nhanh", quickText: "Các tác vụ thường dùng", manageAccounts: "Quản lý tài khoản",
       manageAccountsText: "Thêm, sửa và phân quyền", approveDoctors: "Duyệt hồ sơ bác sĩ",
       approveDoctorsText: "3 hồ sơ đang chờ duyệt", exportReports: "Xuất báo cáo hệ thống", exportReportsText: "PDF hoặc Excel",
-      aiEyebrow: "QUẢN TRỊ / AI OPERATIONS", aiTitle: "Quản lý AI & Ca khám", aiText: "Theo dõi Case, UploadBatch, Analysis và AnalysisResult.",
-      flow: "Luồng phân tích", flowText: "Dữ liệu chi tiết Case và Analysis được lấy trực tiếp từ cơ sở dữ liệu.", openCases: "Mở danh sách ca khám",
+      aiEyebrow: "QUẢN TRỊ / CA KHÁM", aiTitle: "Quản lý ca khám", aiText: "Tra cứu ca khám và xem thông tin đã lưu. Chế độ chỉ đọc.",
     },
     en: {
       navLabel: "SYSTEM ADMINISTRATION", safe: "System secure", encrypted: "End-to-end encryption · v2.4.0",
@@ -29,8 +28,7 @@
       quick: "Quick access", quickText: "Common tasks", manageAccounts: "Manage accounts",
       manageAccountsText: "Add, edit and assign permissions", approveDoctors: "Review doctor profiles",
       approveDoctorsText: "3 profiles awaiting approval", exportReports: "Export system report", exportReportsText: "PDF or Excel",
-      aiEyebrow: "ADMIN / AI OPERATIONS", aiTitle: "AI & Case Management", aiText: "Monitor Case, UploadBatch, Analysis and AnalysisResult.",
-      flow: "Analysis pipeline", flowText: "Detailed Case and Analysis data is read directly from the database.", openCases: "Open case list",
+      aiEyebrow: "ADMIN / CASES", aiTitle: "Case Management", aiText: "Browse cases and saved details. Read-only access.",
     },
   };
   const adminTextTranslations = {
@@ -131,9 +129,6 @@
     setText("#module-ai .eyebrow", t.aiEyebrow);
     setText("#module-ai h2", t.aiTitle);
     setText("#module-ai .module-heading > div > p:last-child", t.aiText);
-    setText("#module-ai h3", t.flow);
-    setText("#module-ai .empty-panel p", t.flowText);
-    setText("#module-ai .empty-panel button", t.openCases);
     const activeModule = $(".module.active");
     const activeName = activeModule ? activeModule.id.replace("module-", "") : "dashboard";
     setText("#page-title", labels[currentLanguage][activeName]);
@@ -333,6 +328,7 @@
     }
     if (name === "doctors") loadDoctorApplications();
     if (name === "security") loadAdminSecurity();
+    if (name === "ai" && typeof window.loadAdminCases === "function") window.loadAdminCases();
     if (name === "homepage" && typeof window.loadHomepageManager === "function") window.loadHomepageManager();
   }
 

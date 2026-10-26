@@ -1,19 +1,146 @@
 """Admin portal pages and the small set of admin dashboard APIs."""
 from datetime import date, datetime, timedelta
 
-from flask import Blueprint, abort, current_app, jsonify, render_template, request, send_from_directory
+from flask import Blueprint, abort, current_app, jsonify, render_template, request, send_from_directory, send_file
 from flask_login import current_user
 from sqlalchemy import func, or_
+from sqlalchemy.orm import selectinload
 from pathlib import Path
 from uuid import uuid4
 from werkzeug.utils import secure_filename
 
 from ..extensions import db
-from ..models import Analysis, AnalysisResult, Case, User, AuditLog, DoctorApplication, SecuritySetting
+from ..models import Analysis, AnalysisResult, Case, CaseImage, User, AuditLog, DoctorApplication, SecuritySetting
 from ..models.base import utcnow
 from ..services.access import require_roles
 
 bp = Blueprint("admin", __name__)
+
+
+def _patient_name(case):
+    snapshot = case.patient_snapshot or {}
+    return (snapshot.get("full_name") if isinstance(snapshot, dict) else None) or (
+        case.patient.full_name if case.patient else "Chưa có thông tin"
+    )
+
+
+def _case_summary(case):
+    return {
+        "id": case.id, "code": case.case_code,
+        "patient": _patient_name(case),
+        "doctor": case.doctor.full_name if case.doctor else "Chưa phân công",
+        "doctor_id": case.doctor_id, "status": case.status,
+        "created_at": case.created_at.isoformat() if case.created_at else None,
+        "lesion_location": case.lesion_location,
+    }
+
+
+@bp.get("/api/admin/cases")
+@require_roles("ADMIN")
+def admin_cases():
+    search = request.args.get("search", "").strip()[:150]
+    status = request.args.get("status", "").strip().upper()
+    doctor = request.args.get("doctor", "").strip()
+    start = request.args.get("start", "").strip()
+    end = request.args.get("end", "").strip()
+    try:
+        page = max(1, int(request.args.get("page", "1")))
+        date_start = date.fromisoformat(start) if start else None
+        date_end = date.fromisoformat(end) if end else None
+    except ValueError:
+        abort(400, description="Bộ lọc ngày hoặc trang không hợp lệ.")
+    if date_start and date_end and date_start > date_end:
+        abort(400, description="Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.")
+    if status and status not in {"CREATED", "UPLOADED", "ANALYZED", "REVIEWED", "COMPLETED"}:
+        abort(400, description="Trạng thái ca khám không hợp lệ.")
+    if doctor and not doctor.isdecimal():
+        abort(400, description="Bác sĩ không hợp lệ.")
+    query = db.select(Case).join(User, Case.doctor_id == User.id)
+    if search:
+        pattern = f"%{search}%"
+        # Account-backed patient names need their own alias to avoid joining users twice.
+        from sqlalchemy.orm import aliased
+        patient_user = aliased(User)
+        query = db.select(Case).join(User, Case.doctor_id == User.id).outerjoin(
+            patient_user, Case.patient_user_id == patient_user.id
+        ).where(or_(Case.case_code.ilike(pattern), User.full_name.ilike(pattern),
+                    patient_user.full_name.ilike(pattern),
+                    Case.patient_snapshot["full_name"].as_string().ilike(pattern)))
+    if status:
+        query = query.where(Case.status == status)
+    if doctor:
+        query = query.where(Case.doctor_id == int(doctor))
+    if date_start:
+        query = query.where(Case.created_at >= datetime.combine(date_start, datetime.min.time()))
+    if date_end:
+        query = query.where(Case.created_at < datetime.combine(date_end + timedelta(days=1), datetime.min.time()))
+    total = db.session.scalar(db.select(func.count()).select_from(query.order_by(None).subquery())) or 0
+    page_size = 15
+    items = db.session.scalars(query.options(selectinload(Case.patient), selectinload(Case.doctor))
+                               .order_by(Case.created_at.desc(), Case.id.desc())
+                               .offset((page - 1) * page_size).limit(page_size)).all()
+    counts = dict(db.session.execute(db.select(Case.status, func.count(Case.id)).group_by(Case.status)).all())
+    doctors = db.session.scalars(db.select(User).where(User.role == "DOCTOR").order_by(User.full_name)).all()
+    return jsonify(cases=[_case_summary(item) for item in items], page=page,
+                   pages=max(1, (total + page_size - 1) // page_size), total=total,
+                   metrics={"total": sum(counts.values()), "processing": sum(counts.get(key, 0) for key in ("CREATED", "UPLOADED", "ANALYZED", "REVIEWED")), "completed": counts.get("COMPLETED", 0)},
+                   doctors=[{"id": item.id, "name": item.full_name} for item in doctors])
+
+
+@bp.get("/api/admin/cases/<int:case_id>")
+@require_roles("ADMIN")
+def admin_case_detail(case_id):
+    case = db.session.get(Case, case_id)
+    if not case:
+        abort(404)
+    data = _case_summary(case)
+    data["images"] = [{"id": item.id, "filename": item.original_filename,
+                        "status": item.status,
+                        "url": f"/api/admin/cases/{case.id}/images/{item.id}/original"}
+                       for item in case.images]
+    data["analyses"] = [{
+        "id": item.id, "image_id": item.case_image_id, "status": item.status,
+        "area": item.lesion_area_px, "perimeter": item.lesion_perimeter_px,
+        "ratio": item.lesion_ratio,
+        "gradcam_url": f"/api/admin/cases/{case.id}/images/{item.id}/gradcam" if item.gradcam_path else None,
+        "contour_url": f"/api/admin/cases/{case.id}/images/{item.id}/contour" if item.contour_path else None,
+        "results": [{"model": result.model_name, "class": result.predicted_class,
+                     "probability": result.predicted_probability, "binary": result.binary_result,
+                     "class_probabilities": result.class_probabilities}
+                    for result in item.results],
+    } for item in case.analyses]
+    data["reviews"] = [{"status": item.review_status, "doctor": item.doctor.full_name if item.doctor else "-",
+                        "note": item.clinical_note, "conclusion": item.doctor_conclusion,
+                        "recommendation": item.recommendation} for item in case.reviews]
+    return jsonify(data)
+
+
+@bp.get("/api/admin/cases/<int:case_id>/images/<int:image_id>/<kind>")
+@require_roles("ADMIN")
+def admin_case_image(case_id, image_id, kind):
+    case = db.session.get(Case, case_id)
+    if case is None:
+        abort(404)
+    if kind == "original":
+        image = db.session.get(CaseImage, image_id)
+        if not image or image.case_id != case_id:
+            abort(404)
+        path = image.image_path
+        root = Path(current_app.config["UPLOAD_FOLDER"]).resolve()
+    elif kind in {"gradcam", "contour"}:
+        analysis = db.session.get(Analysis, image_id)
+        if not analysis or analysis.case_id != case_id:
+            abort(404)
+        path = analysis.gradcam_path if kind == "gradcam" else analysis.contour_path
+        root = (Path(current_app.config["PROJECT_ROOT"]) / "instance" / "gradcam").resolve() if kind == "gradcam" else Path(current_app.config["MEASUREMENT_FOLDER"]).resolve()
+    else:
+        abort(404)
+    if not path:
+        abort(404)
+    candidate = Path(path).resolve()
+    if root not in candidate.parents or not candidate.is_file():
+        abort(404)
+    return send_file(candidate, as_attachment=False)
 
 
 @bp.get("/api/admin/doctor-certificates/<path:filename>")
