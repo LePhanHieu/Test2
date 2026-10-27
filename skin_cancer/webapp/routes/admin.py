@@ -3,13 +3,14 @@ from datetime import date, datetime, timedelta
 
 from flask import Blueprint, abort, current_app, jsonify, render_template, request, send_from_directory, send_file
 from flask_login import current_user
+from flask_mail import Message
 from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload
 from pathlib import Path
 from uuid import uuid4
 from werkzeug.utils import secure_filename
 
-from ..extensions import db
+from ..extensions import db, mail
 from ..models import Analysis, AnalysisResult, Case, CaseImage, User, AuditLog, DoctorApplication, SecuritySetting
 from ..models.base import utcnow
 from ..services.access import require_roles
@@ -465,7 +466,36 @@ def review_doctor_application(application_id):
     application.user.is_active = decision == "APPROVE"
     _admin_audit("DOCTOR_APPLICATION_" + decision, application.user)
     db.session.commit()
-    return jsonify(success=True, status=application.status)
+    notification = None
+    if decision == "APPROVE":
+        notification = _send_doctor_approval_email(application.user)
+    return jsonify(success=True, status=application.status, email_notification=notification)
+
+
+def _send_doctor_approval_email(doctor):
+    """Notify after committing approval; SMTP failures never undo activation."""
+    warning = "Tài khoản bác sĩ đã được phê duyệt nhưng chưa gửi được email thông báo."
+    try:
+        if not all(current_app.config.get(key) for key in (
+            "MAIL_SERVER", "MAIL_USERNAME", "MAIL_PASSWORD", "MAIL_DEFAULT_SENDER"
+        )):
+            raise RuntimeError("SMTP chưa được cấu hình đầy đủ")
+        mail.send(Message(
+            subject="[DermaScan AI] Tài khoản bác sĩ đã được phê duyệt",
+            recipients=[doctor.email],
+            body=(
+                f"Kính gửi Bác sĩ {doctor.full_name},\n\n"
+                "Tài khoản bác sĩ của bạn trên hệ thống DermaScan AI đã được "
+                "quản trị viên phê duyệt thành công và hiện đã được kích hoạt.\n\n"
+                "Bạn có thể đăng nhập bằng email và mật khẩu đã đăng ký. "
+                "Hệ thống sẽ gửi mã OTP qua email mỗi khi bạn đăng nhập.\n\n"
+                "Trân trọng,\nĐội ngũ DermaScan AI"
+            ),
+        ))
+    except Exception:
+        current_app.logger.exception("Không thể gửi email phê duyệt cho bác sĩ id=%s", doctor.id)
+        return {"sent": False, "message": warning}
+    return {"sent": True, "message": "Đã gửi email thông báo phê duyệt cho bác sĩ."}
 
 
 @bp.get("/api/admin/audit-logs")

@@ -35,7 +35,7 @@ def app(tmp_path):
     yield application
 
 
-def _create_and_approve_doctor(app, client):
+def _create_and_approve_doctor(app, client, *, email_sent=True):
     reg = client.post('/api/auth/register', json={
         'full_name': 'Doctor Example', 'email': 'doctor.new@example.test',
         'password': 'StrongPassword123!', 'role': 'DOCTOR',
@@ -64,6 +64,7 @@ def _create_and_approve_doctor(app, client):
                             json={'decision': 'APPROVE'})
     assert approval.status_code == 200, approval.get_json()
     assert approval.get_json()['status'] == 'APPROVED'
+    assert approval.get_json()['email_notification']['sent'] is email_sent
     assert client.patch(f'/api/admin/doctor-applications/{application_id}',
                         json={'decision': 'APPROVE'}).status_code == 404
     client.post('/api/auth/logout')
@@ -86,12 +87,17 @@ def test_one_approval_then_email_otp_for_every_doctor_login(app, monkeypatch):
     client = app.test_client()
     application_id = _create_and_approve_doctor(app, client)
 
+    assert len(sent) == 1
+    assert sent[0].recipients == ['doctor.new@example.test']
+    assert 'phê duyệt' in sent[0].subject.lower()
+    assert 'Doctor Example' in sent[0].body
+
     challenge = _login_doctor(client)
     assert challenge.status_code == 200, challenge.get_json()
     assert challenge.get_json()['requires_2fa'] is True
     assert 'd***@example.test' in challenge.get_json()['message']
-    assert len(sent) == 1
-    assert sent[0].recipients == ['doctor.new@example.test']
+    assert len(sent) == 2
+    assert sent[1].recipients == ['doctor.new@example.test']
     assert client.post('/api/auth/verify-2fa', json={'code': 'invalid'}).status_code == 401
     verified = client.post('/api/auth/verify-2fa', json={'code': _code(sent[-1])})
     assert verified.status_code == 200, verified.get_json()
@@ -106,7 +112,7 @@ def test_one_approval_then_email_otp_for_every_doctor_login(app, monkeypatch):
     again = _login_doctor(client)
     assert again.status_code == 200
     assert again.get_json()['requires_2fa'] is True
-    assert len(sent) == 2  # Admin approval was not repeated.
+    assert len(sent) == 3  # Approval email once, then one OTP per login.
 
 
 def test_resend_invalidates_previous_code_and_expiration_is_checked(app, monkeypatch):
@@ -118,7 +124,7 @@ def test_resend_invalidates_previous_code_and_expiration_is_checked(app, monkeyp
     old = _code(sent[-1])
     resend = client.post('/api/auth/resend-2fa', json={})
     assert resend.status_code == 200, resend.get_json()
-    assert len(sent) == 2
+    assert len(sent) == 3
     with app.app_context():
         doctor = db.session.scalar(db.select(User).where(User.email == 'doctor.new@example.test'))
         doctor.two_factor_code_expires_at = utcnow() - timedelta(minutes=1)
@@ -133,13 +139,45 @@ def test_smtp_failure_is_not_a_successful_login(app, monkeypatch):
 
     monkeypatch.setattr(mail, 'send', failed_send)
     client = app.test_client()
-    _create_and_approve_doctor(app, client)
+    _create_and_approve_doctor(app, client, email_sent=False)
     response = _login_doctor(client)
     assert response.status_code == 503
     assert response.get_json()['success'] is False
     with app.app_context():
         doctor = db.session.scalar(db.select(User).where(User.email == 'doctor.new@example.test'))
         assert doctor.two_factor_code_hash is None
+
+
+def test_approval_persists_and_warns_admin_when_smtp_fails(app, monkeypatch):
+    sent = []
+    def fail_send(message):
+        sent.append(message)
+        raise ConnectionError('SMTP unavailable')
+    monkeypatch.setattr(mail, 'send', fail_send)
+    client = app.test_client()
+    response = client.post('/api/auth/register', json={
+        'full_name': 'Doctor Example', 'email': 'doctor.failed@example.test',
+        'password': 'StrongPassword123!', 'role': 'DOCTOR',
+    })
+    assert response.status_code == 201
+    with app.app_context():
+        doctor = db.session.scalar(db.select(User).where(User.email == 'doctor.failed@example.test'))
+        application = db.session.scalar(db.select(DoctorApplication).where(DoctorApplication.user_id == doctor.id))
+        application.certificate_path = 'certificates/doctor.pdf'
+        application_id = application.id
+        db.session.commit()
+    assert client.post('/api/auth/login', json={
+        'email': 'admin@example.test', 'password': 'StrongPassword123!',
+    }).status_code == 200
+    approval = client.patch(f'/api/admin/doctor-applications/{application_id}', json={'decision': 'APPROVE'})
+    assert approval.status_code == 200
+    assert approval.get_json()['status'] == 'APPROVED'
+    assert approval.get_json()['email_notification']['sent'] is False
+    assert 'email' in approval.get_json()['email_notification']['message'].lower()
+    assert len(sent) == 1
+    with app.app_context():
+        assert db.session.get(DoctorApplication, application_id).status == 'APPROVED'
+        assert db.session.scalar(db.select(User).where(User.email == 'doctor.failed@example.test')).is_active is True
 
 
 def test_sample_doctor_and_regular_user_do_not_require_email_otp(app, monkeypatch):
