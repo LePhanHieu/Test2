@@ -20,6 +20,12 @@
 #module-homepage .hm-field input:focus,#module-homepage .hm-field textarea:focus {border-color:#2ba149;box-shadow:0 0 0 3px rgba(43,161,73,.12);}
 #module-homepage .hm-inline {display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 #module-homepage .hm-image-tools {border:1px dashed #a8c8b3;border-radius:12px;padding:12px;display:grid;gap:10px;}
+#module-homepage .hm-file-picker {display:grid;justify-items:start;gap:8px;position:relative;cursor:pointer;}
+#module-homepage .hm-file-picker input[type="file"] {position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%);}
+#module-homepage .hm-upload-button {display:inline-flex;align-items:center;gap:8px;padding:10px 14px;background:#2ba149;color:#fff;border:1px solid #238d42;border-radius:10px;font-size:12px;font-weight:700;transition:background .2s,transform .2s,box-shadow .2s;}
+#module-homepage .hm-file-picker:hover .hm-upload-button {background:#23863c;transform:translateY(-1px);box-shadow:0 4px 12px rgba(43,161,73,.2);}
+#module-homepage .hm-file-picker:focus-within .hm-upload-button {outline:3px solid rgba(253,134,36,.45);outline-offset:2px;}
+#module-homepage .hm-file-name {color:var(--text,#667585);font-size:12px;font-weight:500;overflow-wrap:anywhere;max-width:100%;}
 #module-homepage .hm-image-tools button,#module-homepage .hm-banner-actions button {border:1px solid #c7ddce;background:#f2faf5;border-radius:9px;padding:8px 12px;color:#267b40;font-weight:600;cursor:pointer;}
 #module-homepage .hm-image-tools img {max-width:100%;max-height:130px;object-fit:contain;background:#eef5f1;border-radius:10px;}
 #module-homepage .hm-banner-item {border:1px solid #dfe9e1;border-radius:13px;padding:13px;display:grid;gap:12px;}

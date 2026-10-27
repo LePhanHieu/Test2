@@ -2082,11 +2082,48 @@ html[data-theme="dark"] .sidebar .nav-item.active {
   cursor: pointer
 }
 
-.certificate-upload input {
+.certificate-upload input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.certificate-upload .certificate-upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid #238d42;
+  border-radius: 10px;
+  background: #2ba149;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background .2s, transform .2s, box-shadow .2s;
+}
+
+.certificate-upload:hover .certificate-upload-button {
+  background: #23863c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(43, 161, 73, .2);
+}
+
+.certificate-upload:focus-within .certificate-upload-button {
+  outline: 3px solid rgba(253, 134, 36, .45);
+  outline-offset: 2px;
+}
+
+.certificate-upload .certificate-file-name {
   display: block;
-  max-width: 220px;
-  margin-top: 4px;
-  font-size: 10px
+  max-width: 260px;
+  margin-top: 7px;
+  color: var(--admin-muted);
+  font-size: 11px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 /* ========================================================
