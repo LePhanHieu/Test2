@@ -18,3 +18,10 @@ def test_login_form_does_not_prepopulate_demo_identity():
     page = response.get_data(as_text=True)
     assert 'value="doctor@dermascan.local"' not in page
     assert "Tài khoản bác sĩ mẫu:" not in page
+
+
+def test_doctor_homepage_slideshow_visible_after_login():
+    """DOCTOR retains the public slideshow; other authenticated roles do not."""
+    template = (Path(__file__).resolve().parents[1] / "skin_cancer/webapp/templates/index.html").read_text(encoding="utf-8")
+    assert 'html.is-authed.is-doctor .homepage-slideshow' in template
+    assert 'document.documentElement.classList.toggle("is-doctor", Boolean(isDoctor))' in template

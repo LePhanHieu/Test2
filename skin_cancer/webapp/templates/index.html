@@ -374,6 +374,10 @@
       display: none;
     }
 
+    html.is-authed.is-doctor .homepage-slideshow {
+      display: block;
+    }
+
     /* Nhãn badge nhỏ phía trên nội dung slide (đổi được qua i18n) */
     .homepage-slide-content::before {
       content: var(--hp-badge-text, "✦ Sàng lọc ung thư da bằng AI");
@@ -5954,6 +5958,8 @@
           authed &&
           currentUser &&
           String(currentUser.role || "").toUpperCase() === "DOCTOR";
+
+        document.documentElement.classList.toggle("is-doctor", Boolean(isDoctor));
 
         var isPatient =
           authed &&
