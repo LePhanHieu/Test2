@@ -212,25 +212,9 @@ class EmailService:
                 ).strip()
 
 
-            greeting = (
-                f"Xin chào {patient_name},"
-                if patient_name
-                else "Xin chào,"
-            )
-
-
-            message.body = (
-                f"{greeting}\n\n"
-                "Đính kèm email này là "
-                "báo cáo phân tích tổn thương da "
-                f"của ca {case_code}.\n\n"
-                "Kết quả do hệ thống DermaScan AI "
-                "cung cấp chỉ có giá trị hỗ trợ "
-                "tham khảo và không thay thế "
-                "chẩn đoán chuyên môn của bác sĩ."
-                "\n\n"
-                "Trân trọng,\n"
-                "DermaScan AI"
+            message.body = self._report_email_body(
+                patient_name,
+                case_code,
             )
 
 
@@ -324,6 +308,28 @@ class EmailService:
             ),
         )
 
+
+    @staticmethod
+    def _report_email_body(patient_name, case_code):
+        """Construct the established plain-text message without I/O."""
+        greeting = (
+            f"Xin chào {patient_name},"
+            if patient_name
+            else "Xin chào,"
+        )
+        return (
+            f"{greeting}\n\n"
+            "Đính kèm email này là "
+            "báo cáo phân tích tổn thương da "
+            f"của ca {case_code}.\n\n"
+            "Kết quả do hệ thống DermaScan AI "
+            "cung cấp chỉ có giá trị hỗ trợ "
+            "tham khảo và không thay thế "
+            "chẩn đoán chuyên môn của bác sĩ."
+            "\n\n"
+            "Trân trọng,\n"
+            "DermaScan AI"
+        )
 
     # ========================================================
     # SMTP VALIDATION
