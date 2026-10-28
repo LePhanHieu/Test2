@@ -4,6 +4,7 @@ from uuid import uuid4
 from flask import (
     Blueprint,
     abort,
+    current_app,
     jsonify,
     request,
 )
@@ -113,7 +114,7 @@ def doctor_statistics():
         cursor = analyses[0].created_at.date().replace(day=1)
         last_month = analyses[-1].created_at.date().replace(day=1)
     else:
-        cursor = today.replace(day=1)
+        cursor = date.today().replace(day=1)
         last_month = cursor
     trends = []
     while cursor <= last_month:

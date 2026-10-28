@@ -26,3 +26,11 @@ def test_quality_workflow_has_separate_read_only_checks():
     assert "ruff format --check" in workflow
     assert "bandit -r" in workflow
     assert "--fix" not in workflow
+
+
+def test_quality_workflow_blocks_undefined_backend_names():
+    workflow = (REPO_ROOT / ".github/workflows/quality.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "ruff check skin_cancer/webapp --select F821 --no-cache" in workflow
