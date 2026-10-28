@@ -1,6 +1,6 @@
 /* Homepage mini-CMS: editor and read-only responsive preview. */
 #module-homepage .hm-shell {display:grid;gap:20px;}
-#module-homepage .hm-heading {display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+#module-homepage .hm-heading {display:flex;align-items:center;justify-content:flex-end;gap:16px;flex-wrap:wrap;}
 #module-homepage .hm-heading h2 {font:700 25px/1.3 Sora,Inter,sans-serif;margin:4px 0 6px;}
 #module-homepage .hm-heading p:last-child {color:#697b86;font-size:13px;}
 #module-homepage .hm-actions {display:flex;align-items:center;gap:14px;}
@@ -20,6 +20,7 @@
 #module-homepage .hm-field input:focus,#module-homepage .hm-field textarea:focus {border-color:#2ba149;box-shadow:0 0 0 3px rgba(43,161,73,.12);}
 #module-homepage .hm-inline {display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 #module-homepage .hm-image-tools {border:1px dashed #a8c8b3;border-radius:12px;padding:12px;display:grid;gap:10px;}
+#module-homepage .hm-field-title {color:var(--text,#334155);font:700 12px Inter,sans-serif;}
 #module-homepage .hm-file-picker {display:grid;justify-items:start;gap:8px;position:relative;cursor:pointer;}
 #module-homepage .hm-file-picker input[type="file"] {position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%);}
 #module-homepage .hm-upload-button {display:inline-flex;align-items:center;gap:8px;padding:10px 14px;background:#2ba149;color:#fff;border:1px solid #238d42;border-radius:10px;font-size:12px;font-weight:700;transition:background .2s,transform .2s,box-shadow .2s;}
@@ -31,6 +32,30 @@
 #module-homepage .hm-banner-item {border:1px solid #dfe9e1;border-radius:13px;padding:13px;display:grid;gap:12px;}
 #module-homepage .hm-banner-actions {display:flex;gap:8px;flex-wrap:wrap;}
 #module-homepage .hm-banner-actions button.danger {color:#b42318;background:#fff1f0;border-color:#ffd3d0;}
+#module-homepage .hm-add-banner {display:inline-flex;align-items:center;justify-content:center;gap:9px;width:max-content;min-height:44px;padding:10px 18px;border:1px solid #20823a;border-radius:11px;background:#2ba149;color:white;font:700 13px Inter,sans-serif;cursor:pointer;box-shadow:0 5px 14px rgba(43,161,73,.15);transition:background .2s,transform .2s,box-shadow .2s;}
+#module-homepage .hm-add-banner:hover {background:#22863d;transform:translateY(-1px);box-shadow:0 7px 18px rgba(43,161,73,.23);}
+#module-homepage .hm-add-banner:focus-visible {outline:3px solid #fd8624;outline-offset:3px;}
+#module-homepage .hm-date-field {position:relative;min-width:0;}
+#module-homepage .hm-date-trigger {display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:43px;border:1px solid #dbe3e5;border-radius:10px;padding:10px 12px;background:var(--surface,#fff);color:var(--text,#334155);font:500 13px Inter,sans-serif;cursor:pointer;text-align:left;}
+#module-homepage .hm-date-trigger svg {color:#2ba149;flex:none;}
+#module-homepage .hm-date-trigger:focus-visible {outline:3px solid rgba(253,134,36,.45);outline-offset:2px;}
+#module-homepage .hm-calendar-popover {position:relative;z-index:5;display:grid;gap:12px;width:100%;min-width:255px;margin-top:2px;padding:13px;background:var(--surface,#fff);border:1px solid #b9dec5;border-radius:14px;box-shadow:0 12px 32px rgba(24,65,42,.13);}
+#module-homepage .hm-calendar-header {display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--text,#334155);}
+#module-homepage .hm-calendar-header strong {font:700 13px Inter,sans-serif;text-transform:capitalize;}
+#module-homepage .hm-calendar-header button {border:1px solid #d5e8da;background:#f0faf3;color:#208541;width:32px;height:32px;border-radius:9px;font-size:22px;cursor:pointer;}
+#module-homepage .hm-calendar-grid {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;text-align:center;align-items:center;}
+#module-homepage .hm-weekday {color:#758b7e;font-size:11px;font-weight:700;padding:5px 0;}
+#module-homepage .hm-day {width:100%;min-height:32px;padding:0;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--text,#334155);font:600 12px Inter,sans-serif;cursor:pointer;}
+#module-homepage .hm-day:hover {background:#e9f7ee;color:#177d36;}
+#module-homepage .hm-day.is-selected {background:#2ba149;color:#fff;}
+#module-homepage .hm-calendar-time {display:flex;align-items:flex-end;justify-content:center;gap:8px;padding-top:8px;border-top:1px solid #e1ece5;}
+#module-homepage .hm-calendar-time label {display:grid;gap:5px;max-width:75px;font-size:11px;}
+#module-homepage .hm-calendar-time input {width:100%;padding:8px;border:1px solid #ceded3;border-radius:8px;background:var(--surface,#fff);color:var(--text,#334155);font:600 13px Inter,sans-serif;text-align:center;}
+#module-homepage .hm-calendar-time>span {padding-bottom:9px;font-size:17px;font-weight:700;}
+#module-homepage .hm-calendar-actions {display:flex;justify-content:space-between;gap:8px;}
+#module-homepage .hm-calendar-actions button {border:1px solid #cde1d2;border-radius:9px;padding:8px 12px;background:#f4faf6;color:#277d40;font:700 12px Inter,sans-serif;cursor:pointer;}
+#module-homepage .hm-calendar-actions .hm-calendar-confirm {background:#2ba149;border-color:#2ba149;color:#fff;}
+#module-homepage .hm-calendar-popover button:focus-visible {outline:2px solid #fd8624;outline-offset:2px;}
 #module-homepage .hm-preview-toolbar {display:flex;justify-content:space-between;align-items:center;padding:12px 15px;border-bottom:1px solid #e1e8e5;gap:8px;}
 #module-homepage .hm-preview-toolbar strong {font-size:13px;}
 #module-homepage .hm-preview-screen {background:#e8edeb;padding:18px;min-height:390px;overflow:auto;display:flex;justify-content:center;}
@@ -58,6 +83,9 @@
 #module-homepage .hm-preview-screen.mobile .hm-hero-copy h3 {font-size:17px;}
 html[data-theme="dark"] #module-homepage .hm-editor,html[data-theme="dark"] #module-homepage .hm-preview-column {background:#172438;border-color:#33475f;}
 html[data-theme="dark"] #module-homepage .hm-field input,html[data-theme="dark"] #module-homepage .hm-field textarea {background:#0d1526;border-color:#33475f;color:#e8eef7;}
+html[data-theme="dark"] #module-homepage .hm-date-trigger,html[data-theme="dark"] #module-homepage .hm-calendar-popover {background:#172438;border-color:#33475f;color:#e8eef7;}
+html[data-theme="dark"] #module-homepage .hm-calendar-header button,html[data-theme="dark"] #module-homepage .hm-calendar-actions button {background:#1e3541;color:#b5ebc3;border-color:#42645a;}
+html[data-theme="dark"] #module-homepage .hm-calendar-actions .hm-calendar-confirm,html[data-theme="dark"] #module-homepage .hm-day.is-selected {background:#2ba149;color:white;}
 html[data-theme="dark"] #module-homepage .hm-heading p:last-child {color:#aebaca;}
 @media (max-width:1150px) {#module-homepage .hm-layout {grid-template-columns:1fr;}}
 @media (max-width:700px) {#module-homepage .hm-inline {grid-template-columns:1fr;}#module-homepage .hm-editor {padding:12px;}#module-homepage .hm-preview-screen {padding:9px;}#module-homepage .hm-heading h2 {font-size:20px;}}
