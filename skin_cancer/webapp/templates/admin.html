@@ -758,6 +758,18 @@
         <div id="admin-case-detail" aria-live="polite"></div>
       </section>
     </div>
+    <div class="modal-backdrop" id="delete-account-modal">
+      <section class="modal delete-account-modal" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
+        <div class="delete-account-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 4v6m4-6v6"/></svg></div>
+        <h2 id="delete-account-title">Xóa vĩnh viễn tài khoản?</h2>
+        <p id="delete-account-description">Tài khoản sẽ bị xóa nếu không có dữ liệu cần lưu giữ. Email có thể đăng ký lại sau khi xóa thành công.</p>
+        <p class="delete-account-error" id="delete-account-error" role="alert" aria-live="polite" hidden></p>
+        <div class="delete-account-actions">
+          <button type="button" class="outline" id="delete-account-cancel">Hủy bỏ</button>
+          <button type="button" class="delete-account-confirm" id="delete-account-confirm">Xác nhận xóa</button>
+        </div>
+      </section>
+    </div>
     <div class="modal-backdrop" id="user-modal">
       <form class="modal" id="user-form">
         <button type="button" class="modal-close" id="close-modal">×</button>

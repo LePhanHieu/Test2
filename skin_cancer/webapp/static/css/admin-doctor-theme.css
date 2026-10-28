@@ -1709,6 +1709,19 @@ html[data-theme="dark"] .hp-auth-logout {
   backdrop-filter: blur(4px);
 }
 
+.delete-account-modal {text-align:left;max-width:460px;border-radius:18px;padding:28px;}
+.delete-account-modal .delete-account-icon {display:grid;place-items:center;width:54px;height:54px;border-radius:15px;background:#fff0ec;color:#dc4938;margin-bottom:15px;}
+.delete-account-modal h2 {font-size:21px;margin:0 0 9px;}
+.delete-account-modal>p {color:var(--admin-muted);font-size:13px;line-height:1.65;margin:0 0 16px;}
+.delete-account-modal .delete-account-error {color:#b42318;background:#fff2ef;border:1px solid #ffc5bb;border-radius:10px;padding:11px 12px;font-weight:600;overflow-wrap:anywhere;}
+.delete-account-modal [hidden] {display:none !important;}
+.delete-account-actions {display:flex;justify-content:flex-end;gap:10px;margin-top:22px;}
+.delete-account-actions button {border-radius:10px;padding:11px 17px;font-weight:700;font-size:12px;}
+.delete-account-confirm {border:1px solid #d93e30;background:#d93e30;color:#fff;transition:background .2s,transform .2s;}
+.delete-account-confirm:hover {background:#b82c24;transform:translateY(-1px);}
+.delete-account-confirm:disabled {opacity:.6;cursor:wait;}
+.delete-account-actions button:focus-visible {outline:3px solid #fd8624;outline-offset:2px;}
+
 .modal {
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius-card);

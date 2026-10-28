@@ -173,35 +173,40 @@
   const roleName = { ADMIN: "Admin", DOCTOR: "Doctor", USER: "User" };
   const csrfMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-  async function api(url, options = {}) {
-    const method = (options.method || "GET").toUpperCase();
-    if (csrfMethods.has(method) && !csrfToken) {
-      const csrfResponse = await fetch("/api/auth/csrf", {
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
-      });
-      const csrfData = await csrfResponse.json().catch(() => ({}));
-      if (!csrfResponse.ok || !csrfData.csrf_token) {
-        throw new Error("Không lấy được CSRF token.");
-      }
-      csrfToken = csrfData.csrf_token;
-    }
-
-    const headers = {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...(csrfMethods.has(method) ? { "X-CSRFToken": csrfToken } : {}),
-      ...(options.headers || {}),
-    };
-    const response = await fetch(url, {
-      ...options,
-      method,
+  async function refreshCsrfToken() {
+    const response = await fetch("/api/auth/csrf", {
       credentials: "same-origin",
-      headers,
+      headers: { Accept: "application/json" },
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.message || "Không thể tải dữ liệu.");
-    return data;
+    if (!response.ok || !data.csrf_token) throw new Error("Không lấy được CSRF token.");
+    csrfToken = data.csrf_token;
+  }
+
+  async function api(url, options = {}) {
+    const method = (options.method || "GET").toUpperCase();
+    const mutation = csrfMethods.has(method);
+    if (mutation && !csrfToken) await refreshCsrfToken();
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const headers = {
+        Accept: "application/json",
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...(mutation ? { "X-CSRFToken": csrfToken } : {}),
+        ...(options.headers || {}),
+      };
+      const response = await fetch(url, {
+        ...options, method, credentials: "same-origin", headers,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (mutation && attempt === 0 && response.status === 400 &&
+          `${data.error || data.message || ""}`.includes("CSRF token thiếu hoặc hết hạn")) {
+        csrfToken = "";
+        await refreshCsrfToken();
+        continue; // CSRF middleware rejected the request; no account was changed.
+      }
+      if (!response.ok) throw new Error(data.message || "Không thể tải dữ liệu.");
+      return data;
+    }
   }
 
   async function loadDashboard() {
@@ -397,7 +402,37 @@
   $("#user-search").addEventListener("input", loadUsers); $("#role-filter").addEventListener("change", loadUsers); $("#status-filter").addEventListener("change", loadUsers);
   $("#user-reset-filters").addEventListener("click", resetAccountFilters);
   $("#users-table").addEventListener("click", async (event) => { const button = event.target.closest("[data-toggle-user]"); if (!button || !confirm("Thay đổi trạng thái tài khoản này?")) return; try { await api(`/api/admin/users/${button.dataset.toggleUser}/status`, { method: "PATCH" }); loadUsers(); } catch (error) { alert(error.message); } });
-  $("#users-table").addEventListener("click", async (event) => { const button = event.target.closest("[data-delete-user]"); if (!button) return; const name = button.closest("tr")?.querySelector(".table-user b")?.textContent || "tài khoản này"; if (!confirm(`Xóa VĨNH VIỄN ${name}?\n\nTài khoản chỉ được xóa nếu không có dữ liệu liên quan cần lưu giữ. Sau khi xóa thành công, email có thể đăng ký lại.`)) return; try { await api(`/api/admin/users/${button.dataset.deleteUser}`, { method: "DELETE" }); loadUsers(); } catch (error) { alert(error.message); } });
+  let accountToDelete = null;
+  const deleteModal = $("#delete-account-modal");
+  function closeDeleteModal() { deleteModal.classList.remove("open"); accountToDelete = null; }
+  $("#users-table").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-delete-user]");
+    if (!button) return;
+    accountToDelete = button.dataset.deleteUser;
+    const name = button.closest("tr")?.querySelector(".table-user b")?.textContent || "tài khoản này";
+    $("#delete-account-description").textContent = `Bạn có chắc muốn xóa vĩnh viễn tài khoản ${name}? Tài khoản chỉ được xóa nếu không có dữ liệu cần bảo toàn. Email có thể đăng ký lại sau khi xóa.`;
+    $("#delete-account-error").hidden = true;
+    $("#delete-account-error").textContent = "";
+    deleteModal.classList.add("open");
+    $("#delete-account-cancel").focus();
+  });
+  $("#delete-account-cancel").addEventListener("click", closeDeleteModal);
+  deleteModal.addEventListener("click", (event) => { if (event.target === deleteModal) closeDeleteModal(); });
+  $("#delete-account-confirm").addEventListener("click", async () => {
+    if (!accountToDelete) return;
+    const button = $("#delete-account-confirm");
+    button.disabled = true;
+    const errorBox = $("#delete-account-error");
+    errorBox.hidden = true;
+    try {
+      await api(`/api/admin/users/${accountToDelete}`, { method: "DELETE" });
+      closeDeleteModal();
+      await loadUsers();
+    } catch (error) {
+      errorBox.textContent = error.message;
+      errorBox.hidden = false;
+    } finally { button.disabled = false; }
+  });
   $("#users-table").addEventListener("change", async (event) => { const select = event.target.closest("[data-update-role]"); if (!select) return; try { await api(`/api/admin/users/${select.dataset.updateRole}/role`, { method: "PATCH", body: JSON.stringify({ role: select.value }) }); } catch (error) { alert(error.message); loadUsers(); } });
   if ($("#save-profile")) $("#save-profile").addEventListener("click", async () => { try { await api("/api/auth/profile", { method: "PUT", body: JSON.stringify({ full_name: $("#profile-name").value, phone: $("#profile-phone").value, two_factor_enabled: $("#profile-2fa").checked }) }); alert("Đã cập nhật hồ sơ."); } catch (error) { alert(error.message); } });
   if ($("#change-password")) $("#change-password").addEventListener("click", async () => { try { await api("/api/auth/change-password", { method: "POST", body: JSON.stringify({ current_password: $("#current-password").value, new_password: $("#new-password").value }) }); alert("Đã đổi mật khẩu."); } catch (error) { alert(error.message); } });
