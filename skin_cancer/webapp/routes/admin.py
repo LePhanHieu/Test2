@@ -14,7 +14,7 @@ from ..extensions import db, mail
 from ..models import Analysis, AnalysisResult, Case, CaseImage, User, AuditLog, DoctorApplication, SecuritySetting
 from ..models.base import utcnow
 from ..services.access import require_roles
-from ..services.user_deletion import delete_unrelated_user, pending_certificate, cleanup_pending_certificate
+from ..services.user_deletion import delete_unrelated_user, deletable_certificate, cleanup_doctor_certificate
 
 bp = Blueprint("admin", __name__)
 
@@ -436,13 +436,13 @@ def delete_user_permanently(user_id):
         abort(404)
     if user.id == current_user.id:
         return jsonify(success=False, message="Không thể xóa tài khoản đang đăng nhập."), 400
-    certificate = pending_certificate(user)
+    certificate = deletable_certificate(user)
     blocker = delete_unrelated_user(user)
     if blocker:
         return jsonify(success=False, message=blocker), 409
     _admin_audit("USER_PERMANENTLY_DELETED", None)
     db.session.commit()
-    cleanup_pending_certificate(certificate)
+    cleanup_doctor_certificate(certificate)
     return jsonify(success=True, message="Đã xóa vĩnh viễn tài khoản. Email có thể đăng ký lại.")
 
 

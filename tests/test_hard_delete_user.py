@@ -55,10 +55,40 @@ def test_delete_blocked_for_doctor_with_cases(app):
         assert db.session.scalar(db.select(Case).where(Case.doctor_id == doctor_id)) is not None
 
 
-def test_reviewed_doctor_application_is_preserved(app):
+def test_approved_doctor_without_protected_records_can_be_deleted(app):
     doctor_id = _user(app, 'reviewed@example.test', 'DOCTOR')
     with app.app_context():
         db.session.add(DoctorApplication(user_id=doctor_id, status='APPROVED', reviewed_at=utcnow()))
+        db.session.commit()
+    client = app.test_client()
+    _login_admin(client)
+    result = client.delete(f'/api/admin/users/{doctor_id}')
+    assert result.status_code == 200, result.get_json()
+    with app.app_context():
+        assert db.session.get(User, doctor_id) is None
+        assert db.session.scalar(db.select(DoctorApplication).where(DoctorApplication.user_id == doctor_id)) is None
+
+
+def test_rejected_doctor_without_protected_records_can_be_deleted(app):
+    doctor_id = _user(app, 'rejected@example.test', 'DOCTOR')
+    with app.app_context():
+        db.session.add(DoctorApplication(user_id=doctor_id, status='REJECTED',
+                                         reviewed_at=utcnow(), rejection_reason='Demo'))
+        db.session.commit()
+    client = app.test_client()
+    _login_admin(client)
+    result = client.delete(f'/api/admin/users/{doctor_id}')
+    assert result.status_code == 200, result.get_json()
+    with app.app_context():
+        assert db.session.get(User, doctor_id) is None
+
+
+def test_approved_doctor_with_case_is_still_protected(app):
+    doctor_id = _user(app, 'reviewed-case@example.test', 'DOCTOR')
+    with app.app_context():
+        db.session.add(DoctorApplication(user_id=doctor_id, status='APPROVED', reviewed_at=utcnow()))
+        db.session.add(Case(case_code='CASE-APPROVED-01', doctor_id=doctor_id,
+                            patient_snapshot={'full_name': 'Patient'}))
         db.session.commit()
     client = app.test_client()
     _login_admin(client)
@@ -153,7 +183,7 @@ def test_pending_doctor_registration_then_admin_delete_and_register_again(app, m
 
 def test_pending_certificate_is_deleted_only_after_successful_admin_delete(app, tmp_path):
     from pathlib import Path
-    from skin_cancer.webapp.services.user_deletion import cleanup_pending_certificate
+    from skin_cancer.webapp.services.user_deletion import cleanup_doctor_certificate
     account_id = _user(app, 'cert-pending@example.test', 'DOCTOR')
     filename = 'pending-test.pdf'
     with app.app_context():
@@ -187,3 +217,23 @@ def test_protected_case_prevents_certificate_deletion(app):
     assert response.status_code == 409
     assert 'cases' in response.get_json()['message']
     assert (root / filename).exists()
+
+
+def test_soft_deleted_approved_account_can_register_again(app):
+    doctor_id = _user(app, 'soft-approved@example.test', 'DOCTOR')
+    with app.app_context():
+        doctor = db.session.get(User, doctor_id)
+        doctor.deleted_at = utcnow()
+        db.session.add(DoctorApplication(user_id=doctor_id, status='APPROVED', reviewed_at=utcnow()))
+        db.session.commit()
+    client = app.test_client()
+    response = client.post('/api/auth/register', json={
+        'full_name': 'Re-registered doctor', 'email': 'soft-approved@example.test',
+        'password': 'StrongPassword123!', 'role': 'DOCTOR',
+    })
+    assert response.status_code == 201, response.get_json()
+    with app.app_context():
+        doctor = db.session.scalar(db.select(User).where(User.email == 'soft-approved@example.test'))
+        assert doctor.full_name == 'Re-registered doctor'
+        assert db.session.scalar(db.select(DoctorApplication.status).where(
+            DoctorApplication.user_id == doctor.id)) == 'PENDING'

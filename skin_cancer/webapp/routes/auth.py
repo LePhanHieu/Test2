@@ -13,7 +13,7 @@ from ..extensions import db, limiter, login_manager, csrf, mail
 from ..models import User, AuditLog, DoctorApplication, SecuritySetting
 from ..models.base import utcnow
 from ..services.access import require_roles
-from ..services.user_deletion import delete_unrelated_user, pending_certificate, cleanup_pending_certificate
+from ..services.user_deletion import delete_unrelated_user, deletable_certificate, cleanup_doctor_certificate
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -559,7 +559,7 @@ def register():
     if existing:
         if existing.deleted_at is None:
             return jsonify(success=False, message='Email đã được sử dụng.'), 409
-        old_certificate = pending_certificate(existing)
+        old_certificate = deletable_certificate(existing)
         blocker = delete_unrelated_user(existing)
         if blocker:
             return jsonify(success=False, message='Email thuộc tài khoản cũ có dữ liệu cần lưu giữ. Vui lòng liên hệ quản trị viên.'), 409
@@ -586,7 +586,7 @@ def register():
         db.session.rollback()
         return jsonify(success=False, message='Email đã được sử dụng.'), 409
 
-    cleanup_pending_certificate(old_certificate)
+    cleanup_doctor_certificate(old_certificate)
     if verification_token:
         _print_terminal("\n==================================================")
         _print_terminal(f" [DERMASCAN AI - EMAIL VERIFICATION] Mã xác thực của tài khoản {user.email} là: {verification_token}")

@@ -1,4 +1,4 @@
-"""Safely remove unreviewed accounts while retaining medical and review records."""
+"""Safely remove accounts with no protected dependent records."""
 from pathlib import Path
 from sqlalchemy import select
 from werkzeug.utils import secure_filename
@@ -7,23 +7,20 @@ from ..extensions import db
 from ..models import DoctorApplication, User
 
 
-def pending_certificate(user):
+def deletable_certificate(user):
     application = db.session.scalar(
         select(DoctorApplication).where(DoctorApplication.user_id == user.id)
     )
-    if application is not None and application.status == "PENDING":
+    if application is not None and application.status in {"PENDING", "APPROVED", "REJECTED"}:
         return application.certificate_path
     return None
 
 
 def deletion_blocker(user: User) -> str | None:
-    """Check actual references; a PENDING application isn't medical history."""
+    """Guard all protected references; application status alone is not a blocker."""
     application = db.session.scalar(
         select(DoctorApplication).where(DoctorApplication.user_id == user.id)
     )
-    if application is not None and application.status != "PENDING":
-        return "Tài khoản có lịch sử xét duyệt bác sĩ cần lưu giữ."
-
     for table in db.metadata.tables.values():
         if table.name == "users":
             continue
@@ -31,10 +28,10 @@ def deletion_blocker(user: User) -> str | None:
             for fk in column.foreign_keys:
                 if fk.column.table.name != "users":
                     continue
-                # This one application may be removed together with its owner.
-                # Never exempt other references, even if their FK uses CASCADE.
+                # Only the target doctor application is deleted together with its owner.
+                # Other references remain protected, regardless of cascade settings.
                 if (table.name == "doctor_applications" and column.name == "user_id"
-                        and application is not None and application.status == "PENDING"):
+                        and application is not None):
                     continue
                 if (fk.ondelete or "").upper() == "SET NULL":
                     continue
@@ -46,7 +43,7 @@ def deletion_blocker(user: User) -> str | None:
 
 
 def delete_unrelated_user(user: User) -> str | None:
-    """Remove the account and optional pending application in caller's transaction."""
+    """Delete account and its application in the caller's transaction."""
     blocker = deletion_blocker(user)
     if blocker:
         return blocker
@@ -61,7 +58,7 @@ def delete_unrelated_user(user: User) -> str | None:
     return None
 
 
-def cleanup_pending_certificate(filename: str | None) -> None:
+def cleanup_doctor_certificate(filename: str | None) -> None:
     """Only after a successful DB commit, remove a unique, in-folder certificate."""
     if not filename or filename != secure_filename(filename):
         return
