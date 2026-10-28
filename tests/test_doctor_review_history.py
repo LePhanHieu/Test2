@@ -102,3 +102,59 @@ def test_review_history_ui_and_calendar_overlay_are_present():
     assert 'data-review-tab="history"' in template
     assert 'doctor-applications/history' in javascript
     assert 'position:absolute' in css[css.index('.hm-calendar-popover'):css.index('.hm-calendar-header')]
+
+
+def test_pending_doctor_cannot_be_unlocked_through_accounts(app):
+    application_id = _application(app, 'pending-lock@example.test')
+    client = app.test_client()
+    _admin(client)
+    with app.app_context():
+        application = db.session.get(DoctorApplication, application_id)
+        user_id = application.user_id
+        assert application.status == 'PENDING'
+    response = client.patch(f'/api/admin/users/{user_id}/status')
+    assert response.status_code == 409
+    assert 'chưa được phê duyệt' in response.get_json()['message']
+    with app.app_context():
+        assert db.session.get(User, user_id).is_active is False
+
+
+def test_rejected_doctor_cannot_be_unlocked_through_accounts(app):
+    application_id = _application(app, 'rejected-lock@example.test')
+    with app.app_context():
+        record = db.session.get(DoctorApplication, application_id)
+        record.status = 'REJECTED'
+        user_id = record.user_id
+        db.session.commit()
+    client = app.test_client()
+    _admin(client)
+    assert client.patch(f'/api/admin/users/{user_id}/status').status_code == 409
+    with app.app_context():
+        assert db.session.get(User, user_id).is_active is False
+
+
+def test_approved_doctor_can_be_unlocked_through_accounts(app):
+    application_id = _application(app, 'approved-lock@example.test')
+    with app.app_context():
+        record = db.session.get(DoctorApplication, application_id)
+        record.status = 'APPROVED'
+        user_id = record.user_id
+        db.session.commit()
+    client = app.test_client()
+    _admin(client)
+    response = client.patch(f'/api/admin/users/{user_id}/status')
+    assert response.status_code == 200, response.get_json()
+    assert response.get_json()['active'] is True
+
+
+def test_doctor_without_application_cannot_be_unlocked(app):
+    with app.app_context():
+        user = User(full_name='Doctor without approval', email='no-approval@example.test', role='DOCTOR', is_active=False)
+        user.set_password('StrongPassword123!')
+        db.session.add(user)
+        db.session.commit()
+        uid = user.id
+    client = app.test_client()
+    _admin(client)
+    response = client.patch(f'/api/admin/users/{uid}/status')
+    assert response.status_code == 409

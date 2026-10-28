@@ -392,6 +392,18 @@ def update_user_status(user_id):
         abort(404)
     if user.id == current_user.id:
         return jsonify(success=False, message="Không thể khóa tài khoản đang đăng nhập."), 400
+    if not user.is_active and user.role == "DOCTOR":
+        approved = db.session.scalar(
+            db.select(DoctorApplication.id).where(
+                DoctorApplication.user_id == user.id,
+                DoctorApplication.status == "APPROVED",
+            )
+        )
+        if approved is None:
+            return jsonify(
+                success=False,
+                message="Không thể mở khóa bác sĩ chưa được phê duyệt. Vui lòng xét duyệt hồ sơ tại Quản lý Bác sĩ & Duyệt trước.",
+            ), 409
     user.is_active = not user.is_active
     _admin_audit("USER_UNLOCK" if user.is_active else "USER_LOCK", user)
     db.session.commit()
