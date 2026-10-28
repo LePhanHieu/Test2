@@ -1,0 +1,26 @@
+/* Accessibility states shared across existing control families.
+   Deliberately narrow: do not override layout, JS state classes or base colors. */
+
+:where(
+  .btn, .primary, .outline, .workflow-action-btn, .workflow-small-btn,
+  .hp-auth-btn, .hp-btn-submit, .doctor-nav-tab, .hp-icon-btn,
+  .hp-check input, .switch input, .modal input, .modal select,
+  .modal textarea
+):focus-visible {
+  outline: var(--ds-focus-ring);
+  outline-offset: 3px;
+}
+
+:where(
+  .btn, .primary, .outline, .workflow-action-btn, .workflow-small-btn,
+  .hp-auth-btn, .hp-btn-submit
+):disabled {
+  cursor: not-allowed;
+}
+
+.hp-check:has(input:focus-visible),
+.switch:has(input:focus-visible) {
+  outline: var(--ds-focus-ring);
+  outline-offset: 3px;
+  border-radius: var(--ds-radius-control);
+}
