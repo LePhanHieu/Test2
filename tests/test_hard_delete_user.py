@@ -124,3 +124,66 @@ def test_previous_soft_deleted_with_cases_does_not_get_reclaimed(app):
     assert result.status_code == 409
     with app.app_context():
         assert db.session.get(User, doctor_id) is not None
+
+
+def test_pending_doctor_registration_then_admin_delete_and_register_again(app, monkeypatch):
+    client = app.test_client()
+    created = client.post('/api/auth/register', json={
+        'full_name': 'Pending Doctor', 'email': 'new.pending@example.test',
+        'password': 'StrongPassword123!', 'role': 'DOCTOR',
+    })
+    assert created.status_code == 201
+    user_id = created.get_json()['user']['id']
+    with app.app_context():
+        application = db.session.scalar(db.select(DoctorApplication).where(DoctorApplication.user_id == user_id))
+        assert application.status == 'PENDING'
+    _login_admin(client)
+    deleted = client.delete(f'/api/admin/users/{user_id}')
+    assert deleted.status_code == 200, deleted.get_json()
+    with app.app_context():
+        assert db.session.get(User, user_id) is None
+        assert db.session.scalar(db.select(DoctorApplication).where(DoctorApplication.user_id == user_id)) is None
+    client.post('/api/auth/logout')
+    again = client.post('/api/auth/register', json={
+        'full_name': 'Pending Doctor Again', 'email': 'new.pending@example.test',
+        'password': 'StrongPassword123!', 'role': 'DOCTOR',
+    })
+    assert again.status_code == 201, again.get_json()
+
+
+def test_pending_certificate_is_deleted_only_after_successful_admin_delete(app, tmp_path):
+    from pathlib import Path
+    from skin_cancer.webapp.services.user_deletion import cleanup_pending_certificate
+    account_id = _user(app, 'cert-pending@example.test', 'DOCTOR')
+    filename = 'pending-test.pdf'
+    with app.app_context():
+        root = Path(app.config['UPLOAD_FOLDER']) / 'doctor-certificates'
+        root.mkdir(parents=True, exist_ok=True)
+        (root / filename).write_bytes(b'%PDF-1.4 test')
+        db.session.add(DoctorApplication(user_id=account_id, status='PENDING', certificate_path=filename))
+        db.session.commit()
+    client = app.test_client()
+    _login_admin(client)
+    response = client.delete(f'/api/admin/users/{account_id}')
+    assert response.status_code == 200, response.get_json()
+    assert not (root / filename).exists()
+
+
+def test_protected_case_prevents_certificate_deletion(app):
+    from pathlib import Path
+    account_id = _user(app, 'case-cert@example.test', 'DOCTOR')
+    filename = 'protected-test.pdf'
+    with app.app_context():
+        root = Path(app.config['UPLOAD_FOLDER']) / 'doctor-certificates'
+        root.mkdir(parents=True, exist_ok=True)
+        (root / filename).write_bytes(b'%PDF-1.4 test')
+        db.session.add(DoctorApplication(user_id=account_id, status='PENDING', certificate_path=filename))
+        db.session.add(Case(case_code='CASE-HOLD-CERT', doctor_id=account_id,
+                            patient_snapshot={'full_name': 'Patient'}))
+        db.session.commit()
+    client = app.test_client()
+    _login_admin(client)
+    response = client.delete(f'/api/admin/users/{account_id}')
+    assert response.status_code == 409
+    assert 'cases' in response.get_json()['message']
+    assert (root / filename).exists()
