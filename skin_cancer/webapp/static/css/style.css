@@ -3467,9 +3467,9 @@ html[data-theme="dark"] .dropzone-meta {
    Keep the image proportional without distortion; crop only on narrow screens. */
 .homepage-slideshow {
   width: 100%;
-  height: auto;
-  min-height: 0;
-  aspect-ratio: 16 / 9;
+  height: clamp(440px, 44vw, 620px);
+  min-height: 440px;
+  aspect-ratio: auto;
 }
 .homepage-carousel-track,
 .homepage-slide {
@@ -3490,5 +3490,26 @@ html[data-theme="dark"] .dropzone-meta {
     height: clamp(360px, 85vw, 480px);
     min-height: 0;
     aspect-ratio: auto;
+  }
+}
+
+/* Desktop hero typography: keep title readable without oversized wrapping. */
+@media (min-width: 721px) {
+  .homepage-slide-content {
+    width: min(820px, calc(100% - 112px));
+    max-width: 820px;
+    padding-top: 52px;
+    padding-bottom: 82px;
+  }
+  .homepage-slide-title {
+    font-size: clamp(36px, 3.7vw, 56px);
+    line-height: 1.12;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+  .homepage-slide-subtitle {
+    max-width: 660px;
+    font-size: clamp(15px, 1.2vw, 17px);
+    line-height: 1.55;
   }
 }
