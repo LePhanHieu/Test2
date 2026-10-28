@@ -5335,11 +5335,11 @@
       </div>
 
       <div class="hp-auth-tabs" role="tablist">
-        <button type="button" class="hp-auth-tab is-active" data-view="login" role="tab" data-i18n="modal.tabLogin">
+        <button type="button" class="hp-auth-tab is-active" data-view="login" role="tab" aria-selected="true" data-i18n="modal.tabLogin">
           Đăng nhập
         </button>
 
-        <button type="button" class="hp-auth-tab" data-view="register" role="tab" data-i18n="modal.tabRegister">
+        <button type="button" class="hp-auth-tab" data-view="register" role="tab" aria-selected="false" data-i18n="modal.tabRegister">
           Đăng ký
         </button>
       </div>
@@ -5775,6 +5775,7 @@
       }
 
       var hpAuthModal = el("hpAuthModal");
+      var hpAuthPreviousFocus = null;
       var hpAnalyze = el("analyze");
       var hpWasAuthed = null;
 
@@ -6124,7 +6125,9 @@
         }
 
         document.querySelectorAll(".hp-auth-tab").forEach(function (tab) {
-          tab.classList.toggle("is-active", tab.dataset.view === view);
+          var selected = tab.dataset.view === view;
+          tab.classList.toggle("is-active", selected);
+          tab.setAttribute("aria-selected", String(selected));
         });
 
         hpClearAlerts();
@@ -6133,6 +6136,9 @@
       function openAuthModal(view) {
         if (!hpAuthModal) return;
 
+        if (hpAuthModal.classList.contains("hidden")) {
+          hpAuthPreviousFocus = document.activeElement;
+        }
         setAuthView(view || "login");
         hpAuthModal.classList.remove("hidden");
         document.body.style.overflow = "hidden";
@@ -6151,6 +6157,10 @@
         hpAuthModal.classList.add("hidden");
         document.body.style.overflow = "";
         hpClearAlerts();
+        if (hpAuthPreviousFocus && hpAuthPreviousFocus.isConnected) {
+          hpAuthPreviousFocus.focus();
+        }
+        hpAuthPreviousFocus = null;
       }
 
       // ====== VALIDATION ======
@@ -6302,6 +6312,25 @@
       if (hpBackdrop) hpBackdrop.addEventListener("click", closeAuthModal);
 
       document.addEventListener("keydown", function (event) {
+        if (
+          event.key === "Tab" && hpAuthModal &&
+          !hpAuthModal.classList.contains("hidden")
+        ) {
+          var focusable = Array.from(hpAuthModal.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )).filter(function (node) { return node.getClientRects().length > 0; });
+          if (focusable.length) {
+            var first = focusable[0];
+            var last = focusable[focusable.length - 1];
+            if (event.shiftKey && (document.activeElement === first || !hpAuthModal.contains(document.activeElement))) {
+              event.preventDefault();
+              last.focus();
+            } else if (!event.shiftKey && (document.activeElement === last || !hpAuthModal.contains(document.activeElement))) {
+              event.preventDefault();
+              first.focus();
+            }
+          }
+        }
         if (
           event.key === "Escape" &&
           hpAuthModal &&
