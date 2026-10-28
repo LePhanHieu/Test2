@@ -91,6 +91,9 @@ def test_one_approval_then_email_otp_for_every_doctor_login(app, monkeypatch):
     assert sent[0].recipients == ['doctor.new@example.test']
     assert 'phê duyệt' in sent[0].subject.lower()
     assert 'Doctor Example' in sent[0].body
+    assert 'Hồ sơ của bạn đã được phê duyệt' in sent[0].html
+    assert 'Doctor Example' in sent[0].html
+    assert '{{DOCTOR_NAME}}' not in sent[0].html
 
     challenge = _login_doctor(client)
     assert challenge.status_code == 200, challenge.get_json()
@@ -98,6 +101,9 @@ def test_one_approval_then_email_otp_for_every_doctor_login(app, monkeypatch):
     assert 'd***@example.test' in challenge.get_json()['message']
     assert len(sent) == 2
     assert sent[1].recipients == ['doctor.new@example.test']
+    assert 'Mã Xác Thực Đăng Nhập' in sent[1].html
+    assert _code(sent[1]) in sent[1].html
+    assert '{{OTP_CODE}}' not in sent[1].html
     assert client.post('/api/auth/verify-2fa', json={'code': 'invalid'}).status_code == 401
     verified = client.post('/api/auth/verify-2fa', json={'code': _code(sent[-1])})
     assert verified.status_code == 200, verified.get_json()

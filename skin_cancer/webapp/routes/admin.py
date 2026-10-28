@@ -525,6 +525,7 @@ def _send_doctor_approval_email(doctor):
         mail.send(Message(
             subject="[DermaScan AI] Tài khoản bác sĩ đã được phê duyệt",
             recipients=[doctor.email],
+            html=render_template('emails/doctor_approved.html', DOCTOR_NAME=doctor.full_name, LOGIN_URL=request.url_root),
             body=(
                 f"Kính gửi Bác sĩ {doctor.full_name},\n\n"
                 "Tài khoản bác sĩ của bạn trên hệ thống DermaScan AI đã được "
@@ -550,6 +551,7 @@ def _send_doctor_rejection_email(doctor, reason):
         mail.send(Message(
             subject="[DermaScan AI] Thông báo kết quả xét duyệt hồ sơ bác sĩ",
             recipients=[doctor.email],
+            html=render_template('emails/doctor_rejected.html', DOCTOR_NAME=doctor.full_name, REJECTION_REASON=reason, SUPPORT_URL='mailto:' + (current_app.config.get('SUPPORT_EMAIL') or current_app.config['MAIL_DEFAULT_SENDER'])),
             body=(
                 f"Kính gửi Bác sĩ {doctor.full_name},\n\n"
                 "Hồ sơ đăng ký bác sĩ của bạn trên DermaScan AI chưa được chấp thuận.\n"

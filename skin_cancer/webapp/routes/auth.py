@@ -3,7 +3,7 @@ import hashlib
 import secrets
 import sys
 import traceback
-from flask import Blueprint, current_app, request, jsonify, session, abort, redirect
+from flask import Blueprint, current_app, request, jsonify, session, abort, redirect, render_template
 from flask_login import current_user, login_user, logout_user
 from flask_mail import Message
 from flask_wtf.csrf import generate_csrf
@@ -105,6 +105,7 @@ def _issue_login_otp(user):
     mail.send(Message(
         subject='DermaScan AI - Mã xác thực đăng nhập bác sĩ',
         recipients=[user.email],
+        html=render_template('emails/doctor_otp.html', USER_NAME=user.full_name, OTP_CODE=otp),
         body=(
             f'Mã OTP đăng nhập DermaScan AI của bạn là: {otp}\n'
             'Mã có hiệu lực trong 5 phút và chỉ sử dụng một lần.\n'

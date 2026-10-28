@@ -45,6 +45,9 @@ def test_rejection_requires_reason_and_appears_in_review_history(app, monkeypatc
     assert result.get_json()['email_notification']['sent'] is True
     assert len(sent) == 1
     assert 'Chứng chỉ chưa hợp lệ' in sent[0].body
+    assert 'Chứng chỉ chưa hợp lệ' in sent[0].html
+    assert 'Một số lý do phổ biến' not in sent[0].html
+    assert '{{REJECTION_REASON}}' not in sent[0].html
 
     history = client.get('/api/admin/doctor-applications/history?status=REJECTED')
     assert history.status_code == 200
