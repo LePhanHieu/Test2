@@ -1,0 +1,13 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-lint
+        name: Ruff lint changed Python files
+        entry: ruff check --select E4,E7,E9,F --no-cache
+        language: system
+        types: [python]
+      - id: ruff-format-check
+        name: Ruff formatting check (no rewrite)
+        entry: ruff format --check
+        language: system
+        types: [python]

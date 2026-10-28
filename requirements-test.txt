@@ -1,2 +1,3 @@
 -r requirements-database.txt
 pytest==9.1.1
+pytest-cov>=6.0,<8.0
