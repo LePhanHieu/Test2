@@ -289,8 +289,33 @@
       if (!list) return;
       list.innerHTML = data.applications.map((item) => `<div class="approval-row" data-application-id="${item.id}"><span class="avatar doctor">${escapeHtml(item.name.slice(0, 2).toUpperCase())}</span><div class="approval-info"><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.email)}</small><label class="certificate-upload"><span class="certificate-upload-button"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5"/><path d="M4 16v4h16v-4"/></svg>Chọn chứng chỉ</span><input type="file" accept=".pdf,.jpg,.jpeg,.png" aria-label="Chọn chứng chỉ bác sĩ" data-certificate="${item.id}"><span class="certificate-file-name" aria-live="polite">Chưa chọn tệp · PDF, JPG, PNG</span></label></div>${item.certificate_path ? `<a class="credential-link" href="/api/admin/doctor-certificates/${encodeURIComponent(item.certificate_path)}">Xem chứng chỉ</a>` : `<span class="credential-link">Chưa tải chứng chỉ</span>`}<div class="approval-actions"><button class="approval-approve" data-review="APPROVE">Phê duyệt</button><button class="approval-reject" data-review="REJECT">Từ chối</button></div></div>`).join("") || "<p>Không có hồ sơ chờ duyệt.</p>";
       list.onchange = async (event) => { const input = event.target.closest("[data-certificate]"); if (!input || !input.files[0]) return; const fileName = input.closest(".certificate-upload")?.querySelector(".certificate-file-name"); if (fileName) fileName.textContent = input.files[0].name; const body = new FormData(); body.append("certificate", input.files[0]); try { const response = await fetch(`/api/admin/doctor-applications/${input.dataset.certificate}/certificate`, { method: "POST", credentials: "same-origin", headers: { "X-CSRFToken": csrfToken }, body }); const result = await response.json(); if (!response.ok) throw new Error(result.message || "Không thể tải chứng chỉ."); await loadDoctorApplications(); } catch (error) { alert(error.message); } };
-      list.onclick = async (event) => { const button = event.target.closest("[data-review]"); if (!button) return; const row = button.closest("[data-application-id]"); if (button.dataset.review === "APPROVE" && !row.querySelector("a.credential-link")) { alert("Cần tải chứng chỉ trước khi phê duyệt."); return; } try { const result = await api(`/api/admin/doctor-applications/${row.dataset.applicationId}`, { method: "PATCH", body: JSON.stringify({ decision: button.dataset.review }) }); row.remove(); if (result.email_notification && result.email_notification.sent === false) alert(result.email_notification.message); } catch (error) { alert(error.message); } };
+      list.onclick = async (event) => { const button = event.target.closest("[data-review]"); if (!button) return; const row = button.closest("[data-application-id]"); if (button.dataset.review === "REJECT") { pendingRejectionId = row.dataset.applicationId; $("#doctor-rejection-reason").value = ""; $("#doctor-rejection-dialog").showModal(); return; } if (!row.querySelector("a.credential-link")) { alert("Cần tải chứng chỉ trước khi phê duyệt."); return; } try { const result = await reviewDoctorApplication(row.dataset.applicationId, "APPROVE"); row.remove(); if (result.email_notification?.sent === false) alert(result.email_notification.message); } catch (error) { alert(error.message); } };
     } catch (error) { console.error(error); }
+  }
+  let pendingRejectionId = null;
+  async function reviewDoctorApplication(id, decision, reason = "") {
+    return api(`/api/admin/doctor-applications/${id}`, {
+      method: "PATCH", body: JSON.stringify({ decision, reason }),
+    });
+  }
+  async function loadDoctorReviewHistory() {
+    const list = $("#doctor-history-list");
+    if (!list) return;
+    const params = new URLSearchParams();
+    for (const [field, selector] of [["search", "#doctor-history-search"], ["status", "#doctor-history-status"], ["from", "#doctor-history-from"], ["to", "#doctor-history-to"]]) {
+      const value = $(selector).value.trim(); if (value) params.set(field, value);
+    }
+    list.textContent = "Đang tải lịch sử...";
+    try {
+      const data = await api(`/api/admin/doctor-applications/history?${params}`);
+      list.innerHTML = data.applications.map(item => {
+        const status = item.status === "APPROVED" ? "Đã duyệt" : "Từ chối";
+        const time = item.reviewed_at ? new Date(item.reviewed_at).toLocaleString("vi-VN") : "—";
+        const certificate = item.certificate_path ? `<a class="credential-link" href="/api/admin/doctor-certificates/${encodeURIComponent(item.certificate_path)}">Xem chứng chỉ</a>` : "Chưa có chứng chỉ";
+        const mailStatus = ({SENT:"Đã gửi",FAILED:"Gửi thất bại"})[item.email_status] || "Chưa ghi nhận";
+        return `<details class="doctor-history-row"><summary><span class="doctor-history-person"><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.email)}</small></span><span class="doctor-review-status ${item.status === "APPROVED" ? "approved" : "rejected"}">${status}</span><span class="doctor-history-time">${escapeHtml(time)}</span><span class="doctor-history-detail-label">Xem chi tiết ▾</span></summary><div class="doctor-history-detail"><p><b>Người xét duyệt:</b> ${escapeHtml(item.reviewer_name)}</p><p><b>Thời gian:</b> ${escapeHtml(time)}</p><p><b>Email thông báo:</b> ${mailStatus}</p><p><b>Chứng chỉ:</b> ${certificate}</p>${item.status === "REJECTED" ? `<p><b>Lý do từ chối:</b> ${escapeHtml(item.rejection_reason || "Không có lý do được ghi nhận")}</p>` : ""}</div></details>`;
+      }).join("") || "<p>Không có hồ sơ xét duyệt phù hợp.</p>";
+    } catch (error) { list.textContent = `Không tải được lịch sử: ${error.message}`; }
   }
   async function loadAdminSecurity() {
     try {
@@ -326,7 +351,7 @@
         resetAccountFilters();
       } else loadUsers();
     }
-    if (name === "doctors") loadDoctorApplications();
+    if (name === "doctors") { if ($("#doctor-review-history").hidden) loadDoctorApplications(); else loadDoctorReviewHistory(); }
     if (name === "security") loadAdminSecurity();
     if (name === "ai" && typeof window.loadAdminCases === "function") window.loadAdminCases();
     if (name === "homepage" && typeof window.loadHomepageManager === "function") window.loadHomepageManager();
@@ -339,6 +364,34 @@
     $$("[data-account-tab]").forEach((item) => item.classList.toggle("active", item === tab));
     $$("[data-account-view]").forEach((view) => view.classList.toggle("active", view.dataset.accountView === target));
   }));
+  $$('[data-review-tab]').forEach(tab => tab.addEventListener("click", () => {
+    const history = tab.dataset.reviewTab === "history";
+    $("#doctor-review-pending").hidden = history;
+    $("#doctor-review-history").hidden = !history;
+    $$('[data-review-tab]').forEach(item => {
+      item.classList.toggle("active", item === tab);
+      item.setAttribute("aria-selected", String(item === tab));
+    });
+    if (history) loadDoctorReviewHistory(); else loadDoctorApplications();
+  }));
+  $("#doctor-history-filter").addEventListener("click", loadDoctorReviewHistory);
+  $("#doctor-history-search").addEventListener("keydown", event => { if (event.key === "Enter") loadDoctorReviewHistory(); });
+  $("#doctor-rejection-cancel").addEventListener("click", () => $("#doctor-rejection-dialog").close());
+  $("#doctor-rejection-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const reason = $("#doctor-rejection-reason").value.trim();
+    if (!reason || !pendingRejectionId) return;
+    const submit = event.currentTarget.querySelector('[type="submit"]');
+    submit.disabled = true;
+    try {
+      const result = await reviewDoctorApplication(pendingRejectionId, "REJECT", reason);
+      $("#doctor-rejection-dialog").close();
+      pendingRejectionId = null;
+      await loadDoctorApplications();
+      if (result.email_notification?.sent === false) alert(result.email_notification.message);
+    } catch (error) { alert(error.message); }
+    finally { submit.disabled = false; }
+  });
   $("#mobile-menu").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
   $("#collapse-sidebar").addEventListener("click", () => { $("#sidebar").classList.toggle("collapsed"); });
   $("#user-search").addEventListener("input", loadUsers); $("#role-filter").addEventListener("change", loadUsers); $("#status-filter").addEventListener("change", loadUsers);

@@ -671,9 +671,34 @@
         </section>
         <section class="module" id="module-doctors">
           <div class="panel doctor-approval-live" id="doctor-approval-panel">
-            <h2>Hồ sơ chờ duyệt</h2>
-            <div class="approval-list" id="doctor-approval-list"></div>
+            <div class="doctor-review-tabs" role="tablist" aria-label="Xét duyệt hồ sơ bác sĩ">
+              <button type="button" class="active" data-review-tab="pending" role="tab" aria-selected="true">Chờ phê duyệt</button>
+              <button type="button" data-review-tab="history" role="tab" aria-selected="false">Lịch sử xét duyệt</button>
+            </div>
+            <div id="doctor-review-pending" role="tabpanel">
+              <h2>Hồ sơ chờ duyệt</h2>
+              <div class="approval-list" id="doctor-approval-list"></div>
+            </div>
+            <div id="doctor-review-history" role="tabpanel" hidden>
+              <h2>Lịch sử xét duyệt</h2>
+              <div class="doctor-history-filters">
+                <label>Tìm kiếm<input id="doctor-history-search" type="search" placeholder="Tên hoặc email bác sĩ" /></label>
+                <label>Trạng thái<select id="doctor-history-status"><option value="">Tất cả</option><option value="APPROVED">Đã duyệt</option><option value="REJECTED">Từ chối</option></select></label>
+                <label>Từ ngày<input id="doctor-history-from" type="date" /></label>
+                <label>Đến ngày<input id="doctor-history-to" type="date" /></label>
+                <button type="button" class="outline" id="doctor-history-filter">Lọc</button>
+              </div>
+              <div id="doctor-history-list" class="approval-list" aria-live="polite"></div>
+            </div>
           </div>
+          <dialog id="doctor-rejection-dialog" class="doctor-rejection-dialog" aria-labelledby="doctor-rejection-title">
+            <form method="dialog" id="doctor-rejection-form">
+              <h3 id="doctor-rejection-title">Từ chối hồ sơ bác sĩ</h3>
+              <p>Nhập lý do từ chối để thông báo cho bác sĩ.</p>
+              <label>Lý do từ chối<textarea id="doctor-rejection-reason" maxlength="1000" rows="4" required placeholder="Ví dụ: Chứng chỉ chưa hợp lệ"></textarea></label>
+              <div class="doctor-rejection-actions"><button type="button" class="outline" id="doctor-rejection-cancel">Hủy</button><button type="submit" class="approval-reject">Xác nhận từ chối</button></div>
+            </form>
+          </dialog>
         </section>
         <section class="module placeholder" id="module-reports">
           <div class="module-actions" style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:16px;">

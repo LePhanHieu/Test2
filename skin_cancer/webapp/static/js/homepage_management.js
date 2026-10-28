@@ -52,6 +52,12 @@
     }
     editor.innerHTML=`<div class="hm-panel">${body}</div>`;
     editor.querySelectorAll('[data-hm-image]').forEach(img=>{const url=imageUrl(get(img.dataset.hmImage),img.dataset.hmImage);if(url)img.src=url;else img.hidden=true;});
+    const calendar=editor.querySelector('.hm-calendar-popover');
+    if(calendar){
+      const spaceBelow=window.innerHeight-calendar.parentElement.getBoundingClientRect().bottom;
+      const spaceAbove=calendar.parentElement.getBoundingClientRect().top;
+      calendar.classList.toggle('hm-calendar-above',spaceBelow<calendar.offsetHeight+12&&spaceAbove>spaceBelow);
+    }
   }
   function imageUrl(path,key){if(state.urls.has(key))return state.urls.get(key);return path?`/api/admin/site-media/image?path=${encodeURIComponent(path)}`:'';}
   function paintPreview(){
@@ -87,6 +93,7 @@
     }
     if(button.dataset.hmLang){state.language=button.dataset.hmLang;rerender();}if(button.hasAttribute('data-hm-add')){if(state.slides.length>=20){info('Chỉ tối đa 20 banner.',true);return;}openCalendar=null;state.slides.push({title:'Banner mới',subtitle:'',image_path:'',button_text:null,button_url:null,is_active:true,start_at:null,end_at:null});changed();rerender();}if(button.dataset.hmRemove!==undefined){openCalendar=null;const i=Number(button.dataset.hmRemove);state.slides.splice(i,1);updateSlideFiles(index=>index===i?null:index>i?index-1:index);changed();rerender();}if(button.dataset.hmMove){openCalendar=null;const [index,delta]=button.dataset.hmMove.split(':').map(Number);const to=index+delta;if(to<0||to>=state.slides.length)return;[state.slides[index],state.slides[to]]=[state.slides[to],state.slides[index]];updateSlideFiles(i=>i===index?to:i===to?index:i);changed();rerender();}});
   editor.addEventListener('keydown',event=>{if(event.key==='Escape'&&openCalendar){openCalendar=null;drawEditor();}});
+  document.addEventListener('click',event=>{if(openCalendar&&!event.target.closest('.hm-date-field')){openCalendar=null;drawEditor();}});
   root.querySelectorAll('[data-hm-tab]').forEach(button=>button.addEventListener('click',()=>{openCalendar=null;state.tab=button.dataset.hmTab;root.querySelectorAll('[data-hm-tab]').forEach(tab=>tab.classList.toggle('active',tab===button));drawEditor();}));
   root.querySelectorAll('[data-hm-device]').forEach(button=>button.addEventListener('click',()=>{state.device=button.dataset.hmDevice;root.querySelectorAll('[data-hm-device]').forEach(item=>item.classList.toggle('active',item===button));document.getElementById('hm-preview-screen').className=`hm-preview-screen ${state.device}`;}));
   saveButton.addEventListener('click',save);

@@ -448,6 +448,41 @@ def doctor_applications():
     } for item in applications])
 
 
+@bp.get("/api/admin/doctor-applications/history")
+@require_roles("ADMIN")
+def doctor_application_history():
+    status = request.args.get("status", "").strip().upper()
+    if status not in {"", "APPROVED", "REJECTED"}:
+        return jsonify(success=False, message="Trạng thái xét duyệt không hợp lệ."), 400
+    query = db.select(DoctorApplication).where(DoctorApplication.status.in_(("APPROVED", "REJECTED")))
+    if status:
+        query = query.where(DoctorApplication.status == status)
+    search = request.args.get("search", "").strip()
+    if search:
+        term = f"%{search}%"
+        query = query.join(DoctorApplication.user).where(or_(User.full_name.ilike(term), User.email.ilike(term)))
+    try:
+        start = request.args.get("from", "").strip()
+        end = request.args.get("to", "").strip()
+        if start:
+            query = query.where(DoctorApplication.reviewed_at >= datetime.strptime(start, "%Y-%m-%d"))
+        if end:
+            query = query.where(DoctorApplication.reviewed_at < datetime.strptime(end, "%Y-%m-%d") + timedelta(days=1))
+    except ValueError:
+        return jsonify(success=False, message="Ngày lọc không hợp lệ."), 400
+    applications = db.session.scalars(query.options(
+        selectinload(DoctorApplication.user), selectinload(DoctorApplication.reviewer)
+    ).order_by(DoctorApplication.reviewed_at.desc(), DoctorApplication.id.desc())).all()
+    return jsonify(applications=[{
+        "id": item.id, "user_id": item.user_id, "name": item.user.full_name,
+        "email": item.user.email, "certificate_path": item.certificate_path,
+        "status": item.status, "reviewed_at": item.reviewed_at.isoformat() if item.reviewed_at else None,
+        "reviewer_name": item.reviewer.full_name if item.reviewer else "Không xác định",
+        "rejection_reason": item.rejection_reason,
+        "email_status": item.email_notification_status,
+    } for item in applications])
+
+
 @bp.patch("/api/admin/doctor-applications/<int:application_id>")
 @require_roles("ADMIN")
 def review_doctor_application(application_id):
@@ -458,17 +493,22 @@ def review_doctor_application(application_id):
         abort(404)
     if decision not in {"APPROVE", "REJECT"}:
         abort(400, description="Quyết định duyệt không hợp lệ.")
+    reason = str(payload.get("reason") or "").strip()
+    if decision == "REJECT" and (not reason or len(reason) > 1000):
+        return jsonify(success=False, message="Vui lòng nhập lý do từ chối (tối đa 1000 ký tự)."), 400
     if decision == "APPROVE" and not application.certificate_path:
-        return jsonify(success=False, message="C?n t?i ch?ng ch? tr??c khi ph? duy?t."), 400
+        return jsonify(success=False, message="Cần tải chứng chỉ trước khi phê duyệt."), 400
     application.status = "APPROVED" if decision == "APPROVE" else "REJECTED"
+    application.rejection_reason = reason if decision == "REJECT" else None
     application.reviewed_by = current_user.id
     application.reviewed_at = utcnow()
     application.user.is_active = decision == "APPROVE"
     _admin_audit("DOCTOR_APPLICATION_" + decision, application.user)
     db.session.commit()
-    notification = None
-    if decision == "APPROVE":
-        notification = _send_doctor_approval_email(application.user)
+    notification = (_send_doctor_approval_email(application.user) if decision == "APPROVE"
+                    else _send_doctor_rejection_email(application.user, reason))
+    application.email_notification_status = "SENT" if notification["sent"] else "FAILED"
+    db.session.commit()
     return jsonify(success=True, status=application.status, email_notification=notification)
 
 
@@ -496,6 +536,29 @@ def _send_doctor_approval_email(doctor):
         current_app.logger.exception("Không thể gửi email phê duyệt cho bác sĩ id=%s", doctor.id)
         return {"sent": False, "message": warning}
     return {"sent": True, "message": "Đã gửi email thông báo phê duyệt cho bác sĩ."}
+
+
+def _send_doctor_rejection_email(doctor, reason):
+    """Send rejection after commit so SMTP failures never reverse the decision."""
+    try:
+        if not all(current_app.config.get(key) for key in (
+            "MAIL_SERVER", "MAIL_USERNAME", "MAIL_PASSWORD", "MAIL_DEFAULT_SENDER"
+        )):
+            raise RuntimeError("SMTP chưa được cấu hình đầy đủ")
+        mail.send(Message(
+            subject="[DermaScan AI] Thông báo kết quả xét duyệt hồ sơ bác sĩ",
+            recipients=[doctor.email],
+            body=(
+                f"Kính gửi Bác sĩ {doctor.full_name},\n\n"
+                "Hồ sơ đăng ký bác sĩ của bạn trên DermaScan AI chưa được chấp thuận.\n"
+                f"Lý do: {reason}\n\n"
+                "Trân trọng,\nĐội ngũ DermaScan AI"
+            ),
+        ))
+    except Exception:
+        current_app.logger.exception("Không thể gửi email từ chối hồ sơ bác sĩ id=%s", doctor.id)
+        return {"sent": False, "message": "Đã từ chối hồ sơ nhưng không gửi được email thông báo."}
+    return {"sent": True, "message": "Đã gửi email thông báo từ chối cho bác sĩ."}
 
 
 @bp.get("/api/admin/audit-logs")

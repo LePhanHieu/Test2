@@ -7,7 +7,7 @@
 #module-homepage #hm-status {font-size:12px;color:#59716a;max-width:240px;}
 #module-homepage .hm-layout {display:grid;grid-template-columns:minmax(320px,45fr) minmax(340px,55fr);gap:18px;align-items:start;}
 #module-homepage .hm-editor,#module-homepage .hm-preview-column {background:var(--surface,#fff);border:1px solid var(--border,#dde5e5);border-radius:18px;overflow:hidden;box-shadow:0 8px 28px rgba(18,54,38,.05);}
-#module-homepage .hm-editor {padding:18px;min-width:0;}
+#module-homepage .hm-editor {padding:18px;min-width:0;overflow:visible;}
 #module-homepage .hm-sections {display:flex;gap:6px;overflow-x:auto;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid #e7eded;}
 #module-homepage .hm-sections button,#module-homepage .hm-preview-toolbar button {border:1px solid transparent;background:transparent;color:var(--text,#334155);border-radius:9px;padding:9px 12px;font:600 12px Inter,sans-serif;white-space:nowrap;cursor:pointer;}
 #module-homepage .hm-sections button.active,#module-homepage .hm-preview-toolbar button.active {background:#e9f7ee;border-color:#c2e8cd;color:#208541;}
@@ -39,7 +39,9 @@
 #module-homepage .hm-date-trigger {display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:43px;border:1px solid #dbe3e5;border-radius:10px;padding:10px 12px;background:var(--surface,#fff);color:var(--text,#334155);font:500 13px Inter,sans-serif;cursor:pointer;text-align:left;}
 #module-homepage .hm-date-trigger svg {color:#2ba149;flex:none;}
 #module-homepage .hm-date-trigger:focus-visible {outline:3px solid rgba(253,134,36,.45);outline-offset:2px;}
-#module-homepage .hm-calendar-popover {position:relative;z-index:5;display:grid;gap:12px;width:100%;min-width:255px;margin-top:2px;padding:13px;background:var(--surface,#fff);border:1px solid #b9dec5;border-radius:14px;box-shadow:0 12px 32px rgba(24,65,42,.13);}
+#module-homepage .hm-calendar-popover {position:absolute;z-index:40;top:calc(100% + 6px);left:0;display:grid;gap:12px;width:min(300px,calc(100vw - 48px));min-width:255px;margin-top:0;padding:13px;background:var(--surface,#fff);border:1px solid #b9dec5;border-radius:14px;box-shadow:0 12px 32px rgba(24,65,42,.13);}
+#module-homepage .hm-date-field:last-child .hm-calendar-popover {left:auto;right:0;}
+#module-homepage .hm-calendar-popover.hm-calendar-above {top:auto;bottom:calc(100% + 6px);}
 #module-homepage .hm-calendar-header {display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--text,#334155);}
 #module-homepage .hm-calendar-header strong {font:700 13px Inter,sans-serif;text-transform:capitalize;}
 #module-homepage .hm-calendar-header button {border:1px solid #d5e8da;background:#f0faf3;color:#208541;width:32px;height:32px;border-radius:9px;font-size:22px;cursor:pointer;}
