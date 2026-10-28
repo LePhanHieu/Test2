@@ -14,6 +14,7 @@ from ..extensions import db, mail
 from ..models import Analysis, AnalysisResult, Case, CaseImage, User, AuditLog, DoctorApplication, SecuritySetting
 from ..models.base import utcnow
 from ..services.access import require_roles
+from ..services.user_deletion import delete_unrelated_user
 
 bp = Blueprint("admin", __name__)
 
@@ -417,17 +418,18 @@ def update_user_role(user_id):
 
 @bp.delete("/api/admin/users/<int:user_id>")
 @require_roles("ADMIN")
-def soft_delete_user(user_id):
+def delete_user_permanently(user_id):
     user = db.session.get(User, user_id)
-    if user is None or user.deleted_at is not None:
+    if user is None:
         abort(404)
     if user.id == current_user.id:
         return jsonify(success=False, message="Không thể xóa tài khoản đang đăng nhập."), 400
-    user.deleted_at = utcnow()
-    user.is_active = False
-    _admin_audit("USER_SOFT_DELETED", user)
+    blocker = delete_unrelated_user(user)
+    if blocker:
+        return jsonify(success=False, message=blocker), 409
+    _admin_audit("USER_PERMANENTLY_DELETED", None)
     db.session.commit()
-    return jsonify(success=True)
+    return jsonify(success=True, message="Đã xóa vĩnh viễn tài khoản. Email có thể đăng ký lại.")
 
 
 @bp.get("/api/admin/doctor-applications")

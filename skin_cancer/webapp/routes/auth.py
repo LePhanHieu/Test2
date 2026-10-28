@@ -13,6 +13,7 @@ from ..extensions import db, limiter, login_manager, csrf, mail
 from ..models import User, AuditLog, DoctorApplication, SecuritySetting
 from ..models.base import utcnow
 from ..services.access import require_roles
+from ..services.user_deletion import delete_unrelated_user
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -554,7 +555,11 @@ def register():
         db.select(User).where(User.email == email.strip().lower())
     )
     if existing:
-        return jsonify(success=False, message='Email đã được sử dụng.'), 409
+        if existing.deleted_at is None:
+            return jsonify(success=False, message='Email đã được sử dụng.'), 409
+        blocker = delete_unrelated_user(existing)
+        if blocker:
+            return jsonify(success=False, message='Email thuộc tài khoản cũ có dữ liệu cần lưu giữ. Vui lòng liên hệ quản trị viên.'), 409
 
     try:
         user = User(
