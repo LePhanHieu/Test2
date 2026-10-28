@@ -401,7 +401,64 @@
   $("#collapse-sidebar").addEventListener("click", () => { $("#sidebar").classList.toggle("collapsed"); });
   $("#user-search").addEventListener("input", loadUsers); $("#role-filter").addEventListener("change", loadUsers); $("#status-filter").addEventListener("change", loadUsers);
   $("#user-reset-filters").addEventListener("click", resetAccountFilters);
-  $("#users-table").addEventListener("click", async (event) => { const button = event.target.closest("[data-toggle-user]"); if (!button || !confirm("Thay đổi trạng thái tài khoản này?")) return; try { await api(`/api/admin/users/${button.dataset.toggleUser}/status`, { method: "PATCH" }); loadUsers(); } catch (error) { alert(error.message); } });
+    const statusModal = $("#account-status-modal");
+  const statusTitle = $("#account-status-title");
+  const statusDescription = $("#account-status-description");
+  const statusConfirm = $("#account-status-confirm");
+  const statusCancel = $("#account-status-cancel");
+  let statusTarget = null;
+
+  function closeStatusModal() {
+    if (statusConfirm.disabled) return;
+    statusModal.classList.remove("open");
+    statusTarget = null;
+  }
+  function showStatusMessage(message) {
+    statusTarget = null;
+    statusTitle.textContent = "Không thể thay đổi trạng thái";
+    statusDescription.textContent = message;
+    statusConfirm.hidden = true;
+    statusCancel.textContent = "Đã hiểu";
+    statusModal.classList.add("open");
+    statusCancel.focus();
+  }
+  $("#users-table").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-toggle-user]");
+    if (!button) return;
+    statusTarget = button.dataset.toggleUser;
+    const action = button.classList.contains("btn-unlock") ? "mở khóa" : "khóa";
+    const name = button.closest("tr")?.querySelector(".table-user b")?.textContent || "tài khoản này";
+    statusTitle.textContent = action === "mở khóa" ? "Mở khóa tài khoản?" : "Khóa tài khoản?";
+    statusDescription.textContent = `Bạn có chắc muốn ${action} tài khoản ${name}?`;
+    statusConfirm.textContent = action === "mở khóa" ? "Xác nhận mở khóa" : "Xác nhận khóa";
+    statusConfirm.hidden = false;
+    statusCancel.textContent = "Hủy bỏ";
+    statusModal.classList.add("open");
+    statusCancel.focus();
+  });
+  statusCancel.addEventListener("click", closeStatusModal);
+  statusModal.addEventListener("click", (event) => {
+    if (event.target === statusModal) closeStatusModal();
+  });
+  statusConfirm.addEventListener("click", async () => {
+    if (!statusTarget || statusConfirm.disabled) return;
+    const userId = statusTarget;
+    statusConfirm.disabled = true;
+    try {
+      await api(`/api/admin/users/${userId}/status`, { method: "PATCH" });
+      statusConfirm.disabled = false;
+      closeStatusModal();
+      await loadUsers();
+    } catch (error) {
+      statusConfirm.disabled = false;
+      showStatusMessage(error.message || "Không thể cập nhật trạng thái tài khoản.");
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && statusModal.classList.contains("open")) {
+      closeStatusModal();
+    }
+  });
   let accountToDelete = null;
   const deleteModal = $("#delete-account-modal");
   function closeDeleteModal() { deleteModal.classList.remove("open"); accountToDelete = null; }
